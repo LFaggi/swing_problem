@@ -30,7 +30,7 @@ def fun(t, y):
 def bc(ya, yb):
     return np.array([ya[0]-x_0, yb[1]-p_T])
 
-sol = solve_bvp(fun, bc, t, y)
+sol = solve_bvp(fun, bc, t, y,tol=10**-20)
 
 t_plot = np.linspace(0, T, 100)
 x_plot = sol.sol(t_plot)[0]
@@ -45,3 +45,5 @@ plt.xlim(0,T)
 plt.legend()
 
 plt.show()
+
+print("Initial costate value should be:", sol.sol(0)[1])
