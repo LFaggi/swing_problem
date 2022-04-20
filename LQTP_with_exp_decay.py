@@ -4,6 +4,7 @@ import math
 from scipy.integrate import solve_bvp
 
 T = 10
+lambda_decay = 10
 n = 10000
 
 a = 1
@@ -24,8 +25,14 @@ def signal(t):
         arr.append(math.sin(t[i])) # define the signal to be tracked
     return np.array(arr)
 
+def exp_decay_arr(t):
+    arr=[]
+    for i in range(len(t)):
+        arr.append(math.exp(-lambda_decay*(T-t[i])))
+    return np.array(arr)
+
 def fun(t, y):
-    return np.vstack((a*y[0]-(b**2/r)*y[1], -q*(y[0] - signal(t))-a*y[1]))
+    return np.vstack((a*y[0]-(b**2/r)*y[1], -q*exp_decay_arr(t)*(y[0] - signal(t))-a*y[1]))
 
 def bc(ya, yb):
     return np.array([ya[0]-x_0, yb[1]-p_T])

@@ -4,6 +4,7 @@ import math
 from scipy.integrate import solve_ivp
 
 T = 10
+lambda_decay = 0.5
 
 a = 1
 b = 1
@@ -20,7 +21,7 @@ def signal(t):
     return np.array(math.sin(t)) # define the signal to be tracked
 
 def fun(t, y):
-    return [a*y[0]-(b**2/r)*y[1], -q*(y[0] - signal(t))-a*y[1]]
+    return [a*y[0]-(b**2/r)*y[1], -q*math.exp(-lambda_decay*(T-t))*(y[0] - signal(t))-a*y[1]]
 
 
 sol = solve_ivp(fun, [0,T], [x_0,p_0], dense_output=True, rtol=10**-10, method="DOP853")
