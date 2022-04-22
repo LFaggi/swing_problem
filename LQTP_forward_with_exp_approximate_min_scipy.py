@@ -2,8 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 from scipy.integrate import solve_ivp
+from scipy.optimize import minimize
 
-T = 1
+
+T = 10
 lambda_decay = 0.1
 
 a = 1
@@ -13,17 +15,33 @@ r = 0.1
 
 x_0 = 0
 p_0 = 0
+w_0 = 0.1
 
 y = np.zeros(2)
+
+
 
 
 def signal(t):
     return np.array(math.sin(t)) # define the signal to be tracked
 
+def sigma(w):
+    # return w
+    return math.tanh(w) # define your own function
 
+def hamiltonian(w,x,p,t):
+    h = 0.5 * q * math.exp(-lambda_decay*(T-t)) * (x-signal(t))**2 + 0.5 * r * w**2 + p * (a * x + b * sigma(w))
+    print(h)
+    return h
+
+def eval_w_min(x,p,t):
+    ham = lambda w:  0.5 * q * math.exp(-lambda_decay*(T-t)) * (x-signal(t))**2 + 0.5 * r * w**2 + p * (a * x + b * sigma(w))
+    w_min = np.float(minimize(ham, w_0).x)
+    print(w_min)
+    return w_min
 
 def fun(t, y):
-    return [a*y[0]-(b**2/r)*y[1], -q*math.exp(-lambda_decay*(T-t))*(y[0] - signal(t))-a*y[1]]
+    return [a*y[0]+ b * sigma(eval_w_min(y[0],y[1],t)), -q*math.exp(-lambda_decay*(T-t))*(y[0] - signal(t))-a*y[1]]
 
 
 sol = solve_ivp(fun, [0,T], [x_0,p_0], dense_output=True, rtol=10**-10, method="DOP853")

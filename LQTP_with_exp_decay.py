@@ -4,7 +4,7 @@ import math
 from scipy.integrate import solve_bvp
 
 T = 10
-lambda_decay = 10
+lambda_decay = 100
 n = 10000
 
 a = 1
