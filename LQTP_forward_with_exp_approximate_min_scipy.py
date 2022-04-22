@@ -4,53 +4,67 @@ import math
 from scipy.integrate import solve_ivp
 from scipy.optimize import minimize
 
+T = 100
+lambda_decay = 1.2
 
-T = 10
-lambda_decay = 0.1
-
-a = 1
+a = -1
 b = 1
 q = 1
 r = 0.1
 
 x_0 = 0
 p_0 = 0
-w_0 = 0.1
 
-y = np.zeros(2)
+class LQTP_problem:
+    def __init__(self,a,b,q,r,x_0,p_0,T,lambda_decay):
+        self.T = T
+        self.lambda_decay = lambda_decay
 
+        self.a = a
+        self.b = b
+        self.q = q
+        self.r = r
 
+        self.x_0 = x_0
+        self.p_0 = p_0
+        self.w_0 = 0.1
 
+        self.y = np.zeros(2)
 
-def signal(t):
-    return np.array(math.sin(t)) # define the signal to be tracked
+    def signal(self,t):
+        return np.array(math.sin(t)) # define the signal to be tracked
 
-def sigma(w):
-    # return w
-    return math.tanh(w) # define your own function
+    def sigma(self,w):
+        # return w
+        return math.tanh(w) # define your own function
 
-def hamiltonian(w,x,p,t):
-    h = 0.5 * q * math.exp(-lambda_decay*(T-t)) * (x-signal(t))**2 + 0.5 * r * w**2 + p * (a * x + b * sigma(w))
-    print(h)
-    return h
+    # def hamiltonian(self,w,x,p,t):
+    #     h = 0.5 * self.q * math.exp(-self.lambda_decay*(self.T-t)) * (x-self.signal(t))**2 + 0.5 * self.r * w**2 + p * (self.a * x + self.b * self.sigma(w))
+    #     print(h)
+    #     return h
 
-def eval_w_min(x,p,t):
-    ham = lambda w:  0.5 * q * math.exp(-lambda_decay*(T-t)) * (x-signal(t))**2 + 0.5 * r * w**2 + p * (a * x + b * sigma(w))
-    w_min = np.float(minimize(ham, w_0).x)
-    print(w_min)
-    return w_min
+    def eval_w_min(self,x,p,t):
+        ham = lambda w:  0.5 * self.q * math.exp(-self.lambda_decay*(self.T-t)) * (x-self.signal(t))**2 + 0.5 * self.r * w**2 + p * (self.a * x + self.b * self.sigma(w))
+        w_min = float(minimize(ham, self.w_0).x)
+        self.w_0 = w_min
+        print(w_min)
+        return w_min
 
-def fun(t, y):
-    return [a*y[0]+ b * sigma(eval_w_min(y[0],y[1],t)), -q*math.exp(-lambda_decay*(T-t))*(y[0] - signal(t))-a*y[1]]
+    def fun(self,t, y):
+        return [self.a*y[0]+ self.b * self.sigma(self.eval_w_min(y[0],y[1],t)), -self.q*math.exp(-self.lambda_decay*(self.T-t))*(y[0] - self.signal(t))-self.a*y[1]]
 
+    def solve_problem(self):
+        return solve_ivp(self.fun, [0,self.T], [self.x_0,self.p_0], dense_output=True, rtol=10**-10, method="DOP853")
 
-sol = solve_ivp(fun, [0,T], [x_0,p_0], dense_output=True, rtol=10**-10, method="DOP853")
+problem = LQTP_problem(a,b,q,r,x_0,p_0,T,lambda_decay)
+
+sol = problem.solve_problem()
 
 n_samples = 1000
 t_plot = np.linspace(0, T, n_samples)
 signal_plot=[]
 for i in range(0,n_samples):
-    signal_plot.append(signal(t_plot[i]))
+    signal_plot.append(problem.signal(t_plot[i]))
 
 
 plt.plot(t_plot, sol.sol(t_plot)[0], label='State',color="blue")
