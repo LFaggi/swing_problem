@@ -60,6 +60,7 @@ class LQTP_problem:
             print(loss)
             print(self.w)
             loss.backward()
+
             self.optim.step()
             self.w.zero_grad()
         return self.w.detach().cpu().numpy()

@@ -5,9 +5,9 @@ from scipy.integrate import solve_ivp
 from scipy.optimize import minimize
 
 T = 100
-lambda_decay = 1.2
+lambda_decay = 0.3
 
-a = -1
+a = -10**-3
 b = 1
 q = 1
 r = 0.1
@@ -32,7 +32,7 @@ class LQTP_problem:
         self.y = np.zeros(2)
 
     def signal(self,t):
-        return np.array(math.sin(t)) # define the signal to be tracked
+        return np.array(math.sin(0.1*t)) # define the signal to be tracked
 
     def sigma(self,w):
         # return w
@@ -73,7 +73,7 @@ plt.plot(t_plot, signal_plot, label='Signal',color="green")
 plt.axhline(y=0, color='black', linestyle='--')
 plt.xlabel("t")
 plt.xlim(0,T)
-plt.ylim(-1.1,1.1)
+plt.ylim(-100,100)
 plt.legend()
 
 plt.show()

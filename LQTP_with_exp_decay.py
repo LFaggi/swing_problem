@@ -3,16 +3,16 @@ import matplotlib.pyplot as plt
 import math
 from scipy.integrate import solve_bvp
 
-T = 10
-lambda_decay = 100
+T = 100
+lambda_decay = 2
 n = 10000
 
-a = 1
+a = -1
 b = 1
 q = 1
 r = 0.1
 
-x_0 = 1
+x_0 = 0
 p_T = 0
 
 t = np.linspace(0, T, num=n, endpoint=True)
@@ -39,7 +39,7 @@ def bc(ya, yb):
 
 sol = solve_bvp(fun, bc, t, y,tol=10**-20)
 
-t_plot = np.linspace(0, T, 100)
+t_plot = np.linspace(0, T, 1000)
 x_plot = sol.sol(t_plot)[0]
 p_plot = sol.sol(t_plot)[1]
 sig_plot = signal(t_plot)
