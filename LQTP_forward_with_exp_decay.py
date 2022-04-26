@@ -20,8 +20,6 @@ y = np.zeros(2)
 def signal(t):
     return np.array(math.sin(t)) # define the signal to be tracked
 
-
-
 def fun(t, y):
     return [a*y[0]-(b**2/r)*y[1], -q*math.exp(-lambda_decay*(T-t))*(y[0] - signal(t))-a*y[1]]
 

@@ -3,13 +3,13 @@ import matplotlib.pyplot as plt
 import math
 from scipy.integrate import solve_bvp
 
-T = 100
+T = 10
 n = 10000
 
 # \ddot \theta + lambda_diss \dot \theta + a sin \theta  = u
 
 a = 1 # it is equal to g/l
-lambda_diss = 0
+lambda_diss = 0.1
 
 
 x1_0 = 1    # initial angle
