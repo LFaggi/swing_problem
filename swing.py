@@ -3,13 +3,15 @@ import matplotlib.pyplot as plt
 import math
 from scipy.integrate import solve_bvp
 
-T = 10
+T = 20
 n = 10000
 
 # \ddot \theta + lambda_diss \dot \theta + a sin \theta  = u
 
 a = 1 # it is equal to g/l
-lambda_diss = 0.1
+lambda_diss = 10
+lambda_exp = 0.
+r = 0.001
 
 
 x1_0 = 1    # initial angle
@@ -26,7 +28,7 @@ def signal(t):
     return np.sin(t)  # define the signal to be tracked
 
 def fun(t, y):
-    return np.vstack((y[1], -y[3] - lambda_diss * y[1] - a * np.sin(y[0]), -(y[0] - signal(t)) + a * y[3] * np.cos(y[0]), -y[2] + lambda_diss * y[3]))
+    return np.vstack((y[1], -y[3]/r - lambda_diss * y[1] - a * np.sin(y[0]), -(y[0] - signal(t))*np.exp(-lambda_exp*(T-t)) + a * y[3] * np.cos(y[0]), -y[2] + lambda_diss * y[3]))
 
 def bc(ya, yb):
     return np.array([ya[0]-x1_0, ya[1] - x2_0, yb[2]-p1_T, yb[3]-p2_T])
@@ -38,11 +40,13 @@ x1_plot = sol.sol(t_plot)[0]
 x2_plot = sol.sol(t_plot)[1]
 p1_plot = sol.sol(t_plot)[2]
 p2_plot = sol.sol(t_plot)[3]
+control_plot = -sol.sol(t_plot)[3]/r
 sig_plot = signal(t_plot)
 plt.plot(t_plot, x1_plot, label=r'$\theta$',color="blue")
 plt.plot(t_plot, x2_plot, label=r'$\dot\theta$',color="cyan")
 plt.plot(t_plot, p1_plot, label=r'$p_{\theta}$',color="red")
 plt.plot(t_plot, p2_plot, label=r'$p_{\dot\theta}$',color="orange")
+plt.plot(t_plot, control_plot, label=r'Control',color="purple")
 plt.plot(t_plot, sig_plot, label='Signal',color="green")
 plt.axhline(y=0, color='black', linestyle='--')
 plt.xlabel("t")
