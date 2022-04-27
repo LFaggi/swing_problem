@@ -3,18 +3,18 @@ import matplotlib.pyplot as plt
 import math
 from scipy.integrate import solve_bvp
 
-T = 20
+T = 2
 n = 10000
 
 # \ddot \theta + lambda_diss \dot \theta + a sin \theta  = u
 
-a = 1 # it is equal to g/l
-lambda_diss = 10
-lambda_exp = 0.
-r = 0.001
+a = 0.1 # it is equal to g/l
+lambda_diss = 1
+lambda_exp = 0.5
+r = 0.1
 
 
-x1_0 = 1    # initial angle
+x1_0 = 0    # initial angle
 x2_0 = 0   # initial angular speed
 
 p1_T = 0
@@ -42,6 +42,7 @@ p1_plot = sol.sol(t_plot)[2]
 p2_plot = sol.sol(t_plot)[3]
 control_plot = -sol.sol(t_plot)[3]/r
 sig_plot = signal(t_plot)
+plt.title("Exact backward")
 plt.plot(t_plot, x1_plot, label=r'$\theta$',color="blue")
 plt.plot(t_plot, x2_plot, label=r'$\dot\theta$',color="cyan")
 plt.plot(t_plot, p1_plot, label=r'$p_{\theta}$',color="red")
@@ -51,6 +52,7 @@ plt.plot(t_plot, sig_plot, label='Signal',color="green")
 plt.axhline(y=0, color='black', linestyle='--')
 plt.xlabel("t")
 plt.xlim(0,T)
+plt.ylim(-1.1,1.1)
 plt.legend()
 
 plt.show()

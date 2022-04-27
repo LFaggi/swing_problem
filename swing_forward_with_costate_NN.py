@@ -16,31 +16,31 @@ class Net(nn.Module):
         self.fc3 = nn.Linear(100, 2)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
+        x = F.tanh(self.fc1(x))
+        x = F.tanh(self.fc2(x))
+        x = self.fc3(x)
         return x
 
 loss_array = []
 t_array = []
 
 
-torch.manual_seed(8)
+torch.manual_seed(7)
 net = Net(input_dim=3)
 net.to(torch.double)
 # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-lr = 1000
+lr = 0.001
 
-T = 10
+T = 2
 n = 1000
 t_eval = np.linspace(0, T, 1000)
 
 # \ddot \theta + lambda_diss \dot \theta + a sin \theta  = u
 
-a = 1 # it is equal to g/l
-lambda_diss = 0.1
-lambda_exp = 0.
-r = 1.
+a = +0.1 # it is equal to g/l
+lambda_diss = 1
+lambda_exp = 0.5
+r = 0.1
 
 
 x1_0 = 0.    # initial angle
@@ -48,6 +48,8 @@ x2_0 = 0.   # initial angular speed
 
 p1_0 = 0.
 p2_0 = 0.
+# p1_0 = -0.29724344750305987
+# p2_0 = -0.2082094618528698
 
 y = np.zeros(4)
 
@@ -63,7 +65,7 @@ def optimize_weights(y,inp,t):
         print(output)
         loss = 0.5 * (output[0] - (-(y[0] - signal(t)) * math.exp(-lambda_exp*(T-t))+ a * y[3] * np.cos(y[0])))**2 \
                + 0.5 * (output[1]-(-y[2] + lambda_diss * y[3]))**2
-        # make_dot(loss).render("grafico", format="png") # the computational graph seems ok!
+        # make_dot(loss).render(f"grafico%i"%i, format="png") # the computational graph seems ok!
         loss.backward()
         # for par in net.parameters():
         #     print(par.grad)
@@ -83,14 +85,14 @@ def fun(t, y):
     print(output)
     return [y[1], -y[3]/r - lambda_diss * y[1] - a * np.sin(y[0]), output[0], output[1]]
 
-sol = solve_ivp(fun, [0,T], [x1_0, x2_0, p1_0, p2_0], dense_output=True, rtol=10**-5, t_eval = t_eval)
-
+sol = solve_ivp(fun, [0,T], [x1_0, x2_0, p1_0, p2_0], dense_output=True, rtol=10**-5)
 
 t_plot = np.linspace(0, T, 1000)
 signal_plot=[]
 for i in range(0,1000):
     signal_plot.append(signal(t_plot[i]))
 
+plt.title("Neural approximation")
 plt.plot(t_plot, sol.sol(t_plot)[0], label=r'$\theta$',color="blue")
 plt.plot(t_plot, sol.sol(t_plot)[1], label=r'$\dot\theta$',color="cyan")
 plt.plot(t_plot, sol.sol(t_plot)[2], label=r'$p_{\theta}$',color="red")
@@ -103,13 +105,11 @@ plt.xlim(0,T)
 plt.ylim(-1.1,1.1)
 plt.legend()
 
-
-
 plt.show()
 
-print(len(loss_array))
-print(len(t_array))
-# print(t_eval)
+print(loss_array)
+print(t_array)
+
 plt.plot(t_array,loss_array)
 
 plt.show()
