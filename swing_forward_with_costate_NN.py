@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torchviz import make_dot
 
 class Net(nn.Module):
     def __init__(self,input_dim):
@@ -22,7 +23,7 @@ class Net(nn.Module):
 
 net = Net(input_dim=3)
 net.to(torch.double)
-optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+# optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
 T = 10
 n = 1000
@@ -37,8 +38,8 @@ lambda_exp = 0.
 x1_0 = 1.    # initial angle
 x2_0 = 0.   # initial angular speed
 
-p1_0 = 0.
-p2_0 = 0.
+p1_0 = 0.2
+p2_0 = 0.6
 
 y = np.zeros(4)
 
@@ -47,14 +48,17 @@ def signal(t):
     return np.sin(t) # define the signal to be tracked
 
 def optimize_weights(y,inp,t):
+    optimizer = optim.SGD(net.parameters(), lr=0.000001, momentum=0.9) # TODO should the optimizer be re-initialized each step?
+
     for i in range(10):
         output = torch.squeeze(net(inp))
         print(output)
-        loss = 0.5 * (output[0] - (-(y[0] - signal(t)) * math.exp(-lambda_exp*(T-t)) + a * y[3] * np.cos(y[0])))**2 + 0.5 * (output[1]-(-y[2] + lambda_diss * y[3]))**2
-        print(loss)
+        loss = 0.5 * (output[0] - (-(y[0] - signal(t)) * math.exp(-lambda_exp*(T-t))+ a * y[3] * np.cos(y[0])))**2 \
+               + 0.5 * (output[1]-(-y[2] + lambda_diss * y[3]))**2
+        # make_dot(loss).render("grafico", format="png") # the computational graph seems ok!
         loss.backward()
-        for par in net.parameters():
-            print(par.grad)
+        # for par in net.parameters():
+        #     print(par.grad)
         optimizer.step()
         net.zero_grad()
     return
@@ -62,7 +66,8 @@ def optimize_weights(y,inp,t):
 
 def fun(t, y):
     print("t:> ",t)
-    inp = torch.unsqueeze(torch.concat([torch.unsqueeze(torch.tensor(y[0]),dim = 0),torch.unsqueeze(torch.tensor(y[1]),dim = 0),torch.unsqueeze(torch.tensor(signal(t)),dim = 0)],dim=0),dim = 0)
+    inp = torch.unsqueeze(torch.concat(
+        [torch.tensor([y[0]]), torch.tensor([y[1]]), torch.tensor([signal(t)])], dim=0), dim=0)
     optimize_weights(y,inp,t)
     output = np.array(torch.squeeze(net(inp)).detach())
     print(output)
