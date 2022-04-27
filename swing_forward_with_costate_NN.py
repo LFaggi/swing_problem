@@ -21,6 +21,7 @@ class Net(nn.Module):
         return x
 
 net = Net(input_dim=3)
+net.to(torch.double)
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
 T = 10
@@ -30,13 +31,14 @@ n = 1000
 
 a = 1 # it is equal to g/l
 lambda_diss = 0.1
+lambda_exp = 0.
 
 
-x1_0 = 1    # initial angle
-x2_0 = 0   # initial angular speed
+x1_0 = 1.    # initial angle
+x2_0 = 0.   # initial angular speed
 
-p1_0 = 0.4508439963795823
-p2_0 = -0.5541796226771637
+p1_0 = 0.
+p2_0 = 0.
 
 y = np.zeros(4)
 
@@ -47,16 +49,23 @@ def signal(t):
 def optimize_weights(y,inp,t):
     for i in range(10):
         output = torch.squeeze(net(inp))
-        loss = 0.5 * (output[0] - (-(y[0] - signal(t)) + a * y[3] * np.cos(y[0])))**2 + 0.5 * (output[1]-(-y[2] + lambda_diss * y[3]))**2
+        print(output)
+        loss = 0.5 * (output[0] - (-(y[0] - signal(t)) * math.exp(-lambda_exp*(T-t)) + a * y[3] * np.cos(y[0])))**2 + 0.5 * (output[1]-(-y[2] + lambda_diss * y[3]))**2
+        print(loss)
         loss.backward()
+        for par in net.parameters():
+            print(par.grad)
         optimizer.step()
         net.zero_grad()
+    return
 
 
 def fun(t, y):
+    print("t:> ",t)
     inp = torch.unsqueeze(torch.concat([torch.unsqueeze(torch.tensor(y[0]),dim = 0),torch.unsqueeze(torch.tensor(y[1]),dim = 0),torch.unsqueeze(torch.tensor(signal(t)),dim = 0)],dim=0),dim = 0)
     optimize_weights(y,inp,t)
-    output = np.array(torch.squeeze(net(inp)))
+    output = np.array(torch.squeeze(net(inp)).detach())
+    print(output)
     return [y[1], -y[3] - lambda_diss * y[1] - a * np.sin(y[0]), output[0], output[1]]
 
 sol = solve_ivp(fun, [0,T], [x1_0, x2_0, p1_0, p2_0], dense_output=True, rtol=10**-10, method="DOP853")
