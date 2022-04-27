@@ -31,14 +31,15 @@ net.to(torch.double)
 # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 lr = 0.001
 
-T = 2
+T = 10
 n = 1000
 t_eval = np.linspace(0, T, 1000)
 
 # \ddot \theta + lambda_diss \dot \theta + a sin \theta  = u
 
-a = +0.1 # it is equal to g/l
+a = 0.1 # it is equal to g/l
 lambda_diss = 1
+lambda_exp_inp = 1
 lambda_exp = 0.5
 r = 0.1
 
@@ -55,7 +56,7 @@ y = np.zeros(4)
 
 
 def signal(t):
-    return np.sin(t) # define the signal to be tracked
+    return np.sin(t)*np.exp(-lambda_exp_inp*(T-t))  # define the signal to be tracked
 
 def optimize_weights(y,inp,t):
     optimizer = optim.Adam(net.parameters(), lr=lr) # TODO should the optimizer be re-initialized each step?
@@ -106,9 +107,6 @@ plt.ylim(-1.1,1.1)
 plt.legend()
 
 plt.show()
-
-print(loss_array)
-print(t_array)
 
 plt.plot(t_array,loss_array)
 

@@ -3,13 +3,14 @@ import matplotlib.pyplot as plt
 import math
 from scipy.integrate import solve_bvp
 
-T = 2
+T = 10
 n = 10000
 
 # \ddot \theta + lambda_diss \dot \theta + a sin \theta  = u
 
 a = 0.1 # it is equal to g/l
 lambda_diss = 1
+lambda_exp_inp = 1
 lambda_exp = 0.5
 r = 0.1
 
@@ -25,7 +26,7 @@ y = np.zeros((4, t.size))
 
 
 def signal(t):
-    return np.sin(t)  # define the signal to be tracked
+    return np.sin(t)*np.exp(-lambda_exp_inp*(T-t))  # define the signal to be tracked
 
 def fun(t, y):
     return np.vstack((y[1], -y[3]/r - lambda_diss * y[1] - a * np.sin(y[0]), -(y[0] - signal(t))*np.exp(-lambda_exp*(T-t)) + a * y[3] * np.cos(y[0]), -y[2] + lambda_diss * y[3]))
