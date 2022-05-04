@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import math
 from scipy.integrate import solve_bvp
 
-T = 10
+T = 5
 n = 10000
 
 # \ddot \theta + lambda_diss \dot \theta + a sin \theta  = u

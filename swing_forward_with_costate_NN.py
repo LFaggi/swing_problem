@@ -31,7 +31,7 @@ net.to(torch.double)
 # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 lr = 0.001
 
-T = 10
+T = 5
 n = 1000
 t_eval = np.linspace(0, T, 1000)
 
@@ -47,10 +47,10 @@ r = 0.1
 x1_0 = 0.    # initial angle
 x2_0 = 0.   # initial angular speed
 
-p1_0 = 0.
-p2_0 = 0.
-# p1_0 = -0.29724344750305987
-# p2_0 = -0.2082094618528698
+# p1_0 = 0.
+# p2_0 = 0.
+p1_0 = -0.009104239069303719
+p2_0 = -0.006257930228420355
 
 y = np.zeros(4)
 
