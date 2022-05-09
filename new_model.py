@@ -3,7 +3,10 @@ import math
 import argparse
 import os
 
-os.remove("./results.png")
+try:
+    os.remove("./results.png")
+except OSError:
+    pass
 
 parser = argparse.ArgumentParser()
 
