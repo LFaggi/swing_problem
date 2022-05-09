@@ -48,8 +48,8 @@ def signal(t):
 # Initialization
 
 # State variables
-phi = 0
-omega = 0
+phi = 0.
+omega = 0.
 xi = 0.1 * np.random.rand(n_neurons)
 theta_n = 0.1 * np.random.rand(n_neurons,n_neurons)
 theta_phi = 0.1 * np.random.rand(n_neurons)
@@ -150,13 +150,13 @@ for t in t_array:
     print("Time:> ",t)
     state_variables, costate_variables = make_step(state_variables, costate_variables, t)
 
-plt.plot(t_array, states_for_plot0, label=r'$\phi$',color="blue")
-plt.plot(t_array, states_for_plot1, label=r'$\omega$',color="cyan")
-plt.plot(t_array, np.array(states_for_plot2)[:,0], label=r'$\xi_0$')
+plt.plot(t_array, states_for_plot0, label=r'$\phi$', color="blue")
+plt.plot(t_array, states_for_plot1, label=r'$\omega$', color="red")
+plt.plot(t_array, np.array(states_for_plot2)[:, 0], label=r'$\xi_0$', color="orange")
 
-plt.plot(t_array, costates_for_plot0, label=r'$p_\phi$')
-plt.plot(t_array, costates_for_plot1, label=r'$p_\omega$')
-plt.plot(t_array, np.array(costates_for_plot2)[:,0], label=r'$p_{\xi_0}$')
+plt.plot(t_array, costates_for_plot0, label=r'$p_\phi$', color="blue", linestyle="-.")
+plt.plot(t_array, costates_for_plot1, label=r'$p_\omega$', color="red",  linestyle="-.")
+plt.plot(t_array, np.array(costates_for_plot2)[:, 0], label=r'$p_{\xi_0}$', color="orange", linestyle="-.")
 
 plt.plot(t_array, signal_for_plot, label="Signal", color = "green")
 
