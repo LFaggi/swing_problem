@@ -1,7 +1,5 @@
 import numpy as np
 import math
-import matplotlib.pyplot as plt
-plt.switch_backend('agg')
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -13,8 +11,14 @@ parser.add_argument("--n_neurons", type=int, default=100)
 parser.add_argument("--lambda_exp",type=float, default=0.)
 parser.add_argument("--lambda_diss",type=float, default=0.)
 
+parser.add_argument("--on_server", type=str, default="no", choices=["no","yes"])
+
 args = parser.parse_args()
 
+import matplotlib
+if args.on_server == "yes":
+    matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 T = args.T
 delta_t = args.delta_t
@@ -154,7 +158,6 @@ plt.xlim(0,T)
 plt.legend()
 
 plt.savefig('./results.png')
-
-plt.show()
-
-plt.close()
+if args.on_server == "no":
+    plt.show()
+    plt.close()
