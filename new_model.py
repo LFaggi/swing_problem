@@ -5,8 +5,7 @@ import os
 import time
 
 try:
-    os.remove("./results.png")
-    time.sleep(0.2)
+    os.remove(r"./results.png")
 except OSError:
     pass
 
