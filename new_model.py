@@ -11,7 +11,7 @@ except OSError:
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--T", type=float, default=10 ,help="Time Horizon")
+parser.add_argument("--T", type=float, default=2 ,help="Time Horizon")
 parser.add_argument("--delta_t", type=float, default=0.01 ,help="Integration step")
 parser.add_argument("--n_neurons", type=int, default=10)
 
@@ -50,8 +50,7 @@ def signal(t):
 # State variables
 phi = 0.
 omega = 0.01
-# xi = 0. * np.random.rand(n_neurons)
-xi = np.zeros(n_neurons)
+xi = 0. * np.random.rand(n_neurons)
 theta_n = 0.1 * np.random.rand(n_neurons,n_neurons)
 theta_phi = 0.1 * np.random.rand(n_neurons)
 theta_omega = 0.1 * np.random.rand(n_neurons)
@@ -64,8 +63,8 @@ p_phi = 0
 p_omega = 0
 p_xi = np.zeros(n_neurons)
 p_theta_n  = np.zeros((n_neurons,n_neurons))
-p_theta_phi =   np.zeros(n_neurons)
-p_theta_omega =   np.zeros(n_neurons)
+p_theta_phi = np.zeros(n_neurons)
+p_theta_omega = np.zeros(n_neurons)
 
 costate_variables = [p_phi,p_omega,p_xi,p_theta_n,p_theta_phi,p_theta_omega]
 
@@ -137,19 +136,20 @@ signal_for_plot = []
 for t in t_array:
     states_for_plot0.append(state_variables[0])
     states_for_plot1.append(state_variables[1])
-    states_for_plot2.append(state_variables[2])
-    states_for_plot3.append(state_variables[3])
-    states_for_plot4.append(state_variables[4])
-    states_for_plot5.append(state_variables[5])
+    states_for_plot2.append(state_variables[2].copy())
+    states_for_plot3.append(state_variables[3].copy())
+    states_for_plot4.append(state_variables[4].copy())
+    states_for_plot5.append(state_variables[5].copy())
     costates_for_plot0.append(costate_variables[0])
     costates_for_plot1.append(costate_variables[1])
-    costates_for_plot2.append(costate_variables[2])
-    costates_for_plot3.append(costate_variables[3])
-    costates_for_plot4.append(costate_variables[4])
-    costates_for_plot5.append(costate_variables[5])
-    signal_for_plot.append(signal(t))
+    costates_for_plot2.append(costate_variables[2].copy())
+    costates_for_plot3.append(costate_variables[3].copy())
+    costates_for_plot4.append(costate_variables[4].copy())
+    costates_for_plot5.append(costate_variables[5].copy())
+    signal_for_plot.append(signal(t).copy())
     print("Time:> ",t)
     state_variables, costate_variables = make_step(state_variables, costate_variables, t)
+
 
 plt.plot(t_array, states_for_plot0, label=r'$\phi$', color="blue")
 plt.plot(t_array, states_for_plot1, label=r'$\omega$', color="red")
