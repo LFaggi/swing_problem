@@ -100,7 +100,7 @@ def make_step(states, costates, t):
         temp_sum1 += (1-math.tanh(a[i])**2) * costates[2][i] * states[4][i] # in costate update equation for phi
         temp_sum2 += (1-math.tanh(a[i])**2) * costates[2][i] * states[5][i] # in costate update equation for omega
         for j in range(n_neurons):
-            temp_sum3[i] += (1-math.tanh(a[j])) * states[3][j,i] * costates[2][j] # in costate update equation for xi
+            temp_sum3[i] += (1-math.tanh(a[j])**2) * states[3][j,i] * costates[2][j] # in costate update equation for xi
 
     new_costates[0] = costates[0] + delta_t * (-math.exp(lambda_exp * t) * (states[0] - signal(t)) + g * costates[1] * math.cos(states[0])/l - temp_sum1)
     new_costates[1] = costates[1] + delta_t * (-temp_sum2 + lambda_diss * costates[1] - costates[0])
