@@ -150,11 +150,11 @@ plt.plot(t_array, np.array(costates_for_plot2)[:,0], label=r'$p_{\xi_0}$')
 
 plt.plot(t_array, signal_for_plot, label="Signal", color = "green")
 
-plt.ylim(-10,10)
-plt.xlim(0,10)
+plt.ylim(-5,5)
+plt.xlim(0,T)
 plt.legend()
 
-plt.savefig('my_plot.png')
+plt.savefig('./my_plot.png')
 
 if args.show_plot == "yes":
     plt.show()
