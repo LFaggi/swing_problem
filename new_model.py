@@ -12,8 +12,6 @@ parser.add_argument("--n_neurons", type=int, default=100)
 parser.add_argument("--lambda_exp",type=float, default=0.)
 parser.add_argument("--lambda_diss",type=float, default=0.)
 
-parser.add_argument("--show_plot",type=str, default="yes", choices=["no","yes"])
-
 args = parser.parse_args()
 
 
@@ -154,9 +152,7 @@ plt.ylim(-5,5)
 plt.xlim(0,T)
 plt.legend()
 
-plt.savefig('./my_plot.png')
-
-# if args.show_plot == "yes":
+plt.savefig('./results.png')
 
 plt.show()
 
