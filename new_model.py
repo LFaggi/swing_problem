@@ -5,14 +5,14 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("T", type=float, default=10 ,help="Time Horizon")
-parser.add_argument("delta_t", type=float, default=0.01 ,help="Integration step")
-parser.add_argument("n_neurons", type=int, default=100)
+parser.add_argument("--T", type=float, default=10 ,help="Time Horizon")
+parser.add_argument("--delta_t", type=float, default=0.01 ,help="Integration step")
+parser.add_argument("--n_neurons", type=int, default=100)
 
-parser.add_argument("lambda_exp",type=float, default=0.)
-parser.add_argument("lambda_diss",type=float, default=0.)
+parser.add_argument("--lambda_exp",type=float, default=0.)
+parser.add_argument("--lambda_diss",type=float, default=0.)
 
-parser.add_argument("show_plot",type=str, default="yes", choices=["no","yes"])
+parser.add_argument("--show_plot",type=str, default="yes", choices=["no","yes"])
 
 args = parser.parse_args()
 
