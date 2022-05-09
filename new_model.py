@@ -4,10 +4,12 @@ import argparse
 import os
 import time
 
-try:
-    os.remove(r"./results.png")
-except OSError:
-    pass
+if os.path.exists("./results.png"):
+    os.remove("./results.png")
+# try:
+#     os.remove(r"./results.png")
+# except OSError:
+#     pass
 
 parser = argparse.ArgumentParser()
 
