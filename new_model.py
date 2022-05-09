@@ -4,8 +4,8 @@ import argparse
 import os
 import time
 
-if os.path.exists("./results.png"):
-    os.remove("./results.png")
+if os.path.exists(r".\results.png"):
+    os.remove("r.\results.png")
 # try:
 #     os.remove(r"./results.png")
 # except OSError:
