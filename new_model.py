@@ -154,6 +154,6 @@ plt.legend()
 
 plt.savefig('./results.png')
 
-plt.show()
+# plt.show()
 
-plt.close()
+# plt.close()
