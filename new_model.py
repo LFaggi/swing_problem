@@ -1,6 +1,9 @@
 import numpy as np
 import math
 import argparse
+import os
+
+os.remove("./results.png")
 
 parser = argparse.ArgumentParser()
 
