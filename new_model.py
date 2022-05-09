@@ -167,4 +167,4 @@ plt.legend()
 plt.savefig('./results.png')
 if args.on_server == "no":
     plt.show()
-    plt.close()
+plt.close()
