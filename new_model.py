@@ -1,15 +1,30 @@
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+import argparse
 
-T = 10
-delta_t = 0.0001
-n_neurons = 10
+parser = argparse.ArgumentParser()
 
+parser.add_argument("T", type=float, default=10 ,help="Time Horizon")
+parser.add_argument("delta_t", type=float, default=0.01 ,help="Integration step")
+parser.add_argument("n_neurons", type=int, default=100)
+
+parser.add_argument("lambda_exp",type=float, default=0.)
+parser.add_argument("lambda_diss",type=float, default=0.)
+
+parser.add_argument("show_plot",type=str, default="yes", choices=["no","yes"])
+
+args = parser.parse_args()
+
+
+T = args.T
+delta_t = args.delta_t
+n_neurons = args.n_neurons
+
+lambda_diss = args.lambda_diss
+lambda_exp = args.lambda_exp
 g = 9.81
 l = 1
-lambda_diss = 0.1
-lambda_exp = 1
 m = 1
 m_zero = 1
 m_theta_n = np.ones((n_neurons,n_neurons))
@@ -25,10 +40,10 @@ def signal(t):
 # State variables
 phi = 0
 omega = 0
-xi = np.zeros(n_neurons)
+xi = 0.1 * np.random.rand(n_neurons)
 theta_n = 0.1 * np.random.rand(n_neurons,n_neurons)
-theta_phi =  0.1 * np.random.rand(n_neurons)
-theta_omega =  0.1 * np.random.rand(n_neurons)
+theta_phi = 0.1 * np.random.rand(n_neurons)
+theta_omega = 0.1 * np.random.rand(n_neurons)
 
 state_variables = [phi,omega,xi,theta_n,theta_phi,theta_omega]
 
@@ -82,11 +97,10 @@ def make_step(states, costates, t):
 
     for i in range(n_neurons):
         new_costates[2][i] = costates[2][i] + delta_t * (alpha[i] * costates[2][i]-temp_sum3[i])
-
         if i == 0:
             new_costates[2][i] += - delta_t * (costates[1]/m + m_zero * states[2][0] * math.exp(lambda_exp * t))
         for j in range(n_neurons):
-            new_costates[3][i,j] = costates[3][i,j] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i])**2) * states[2][j])
+            new_costates[3][i, j] = costates[3][i,j] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i])**2) * states[2][j])
         new_costates[4][i] = costates[4][i] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[0])
         new_costates[5][i] = costates[5][i] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[1])
     return new_states,new_costates
@@ -109,7 +123,6 @@ costates_for_plot5 = []
 
 signal_for_plot = []
 
-
 for t in t_array:
     states_for_plot0.append(state_variables[0])
     states_for_plot1.append(state_variables[1])
@@ -127,8 +140,6 @@ for t in t_array:
     print("Time:> ",t)
     state_variables, costate_variables = make_step(state_variables, costate_variables, t)
 
-
-
 plt.plot(t_array, states_for_plot0, label=r'$\phi$',color="blue")
 plt.plot(t_array, states_for_plot1, label=r'$\omega$',color="cyan")
 plt.plot(t_array, np.array(states_for_plot2)[:,0], label=r'$\xi_0$')
@@ -139,9 +150,11 @@ plt.plot(t_array, np.array(costates_for_plot2)[:,0], label=r'$p_{\xi_0}$')
 
 plt.plot(t_array, signal_for_plot, label="Signal", color = "green")
 
-
-
 plt.ylim(-10,10)
 plt.xlim(0,10)
 plt.legend()
-plt.show()
+
+plt.savefig('my_plot.png')
+
+if args.show_plot == "yes":
+    plt.show()
