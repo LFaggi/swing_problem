@@ -2,7 +2,6 @@ import numpy as np
 import math
 import argparse
 import os
-import time
 
 try:
     os.remove(r".\results.png")
@@ -11,14 +10,23 @@ except OSError:
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--T", type=float, default=2 ,help="Time Horizon")
+parser.add_argument("--T", type=float, default=10., help="Time Horizon")
 parser.add_argument("--delta_t", type=float, default=0.01 ,help="Integration step")
-parser.add_argument("--n_neurons", type=int, default=10)
+parser.add_argument("--n_neurons", type=int, default=50)
 
-parser.add_argument("--lambda_exp",type=float, default=0.)
-parser.add_argument("--lambda_diss",type=float, default=0.)
+parser.add_argument("--alpha",type=float, default=1.)
+parser.add_argument("--lambda_exp",type=float, default=1.)
+parser.add_argument("--lambda_diss",type=float, default=1.)
+parser.add_argument("--m",type=float, default=1.)
+parser.add_argument("--m_zero",type=float, default=1.)
+parser.add_argument("--m_theta_n",type=float, default=1.)
+parser.add_argument("--m_phi",type=float, default=1.)
+parser.add_argument("--m_omega",type=float, default=1.)
+
 
 parser.add_argument("--on_server", type=str, default="no", choices=["no","yes"])
+
+parser.add_argument("--plot_range", type=float, default=5)
 
 args = parser.parse_args()
 
@@ -35,12 +43,12 @@ lambda_diss = args.lambda_diss
 lambda_exp = args.lambda_exp
 g = 9.81
 l = 1
-m = 1
-m_zero = 1
-m_theta_n = np.ones((n_neurons,n_neurons))
-m_phi =  np.ones(n_neurons)
-m_omega =  np.ones(n_neurons)
-alpha = np.ones(n_neurons)
+m = args.m
+m_zero = args.m_zero
+m_theta_n = args.m_theta_n * np.ones((n_neurons,n_neurons))
+m_phi = args.m_phi * np.ones(n_neurons)
+m_omega = args.m_omega * np.ones(n_neurons)
+alpha = args.alpha * np.ones(n_neurons)
 
 def signal(t):
     return np.sin(t)
@@ -115,6 +123,14 @@ def make_step(states, costates, t):
         new_costates[5][i] = costates[5][i] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[1])
     return new_states,new_costates
 
+# def compute_H(states, costates, t):  ##TODO still to be done
+#     H = 0.5 *  np.exp(lambda_exp * t) * ((states[0]-signal(t))**2 + m_zero * states[2][0]**2) + costates[0] * states[1] + costates[1] * (-g * math.sin(states[0])/l - lambda_diss * states[1] + states[2][0]/m)
+#
+#     temp1 = 0
+#     temp2 = 0
+#     for i in range(n_neurons):
+#         temp1 =+ ...
+
 t_array = np.arange(0,T, delta_t)
 
 states_for_plot0 = []
@@ -148,6 +164,7 @@ for t in t_array:
     costates_for_plot5.append(costate_variables[5].copy())
     signal_for_plot.append(signal(t).copy())
     print("Time:> ",t)
+    # compute_H(state_variables, costate_variables, t) ##TODO still to be done
     state_variables, costate_variables = make_step(state_variables, costate_variables, t)
 
 
@@ -161,7 +178,7 @@ plt.plot(t_array, np.array(costates_for_plot2)[:, 0], label=r'$p_{\xi_0}$', colo
 
 plt.plot(t_array, signal_for_plot, label="Signal", color = "green")
 
-plt.ylim(-5,5)
+plt.ylim(-args.plot_range,args.plot_range)
 plt.xlim(0,T)
 plt.legend()
 
