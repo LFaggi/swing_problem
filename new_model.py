@@ -49,7 +49,7 @@ def signal(t):
 
 # State variables
 phi = 0.
-omega = 0.01
+omega = 0.
 xi = 0. * np.random.rand(n_neurons)
 theta_n = 0.1 * np.random.rand(n_neurons,n_neurons)
 theta_phi = 0.1 * np.random.rand(n_neurons)
