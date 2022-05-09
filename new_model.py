@@ -156,5 +156,8 @@ plt.legend()
 
 plt.savefig('./my_plot.png')
 
-if args.show_plot == "yes":
-    plt.show()
+# if args.show_plot == "yes":
+
+plt.show()
+
+plt.close()
