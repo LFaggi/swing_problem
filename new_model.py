@@ -5,28 +5,30 @@ import os
 
 try:
     os.remove(r".\results.png")
+    os.remove(r".\hamiltonian.png")
 except OSError:
     pass
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--T", type=float, default=10., help="Time Horizon")
+parser.add_argument("--T", type=float, default=5., help="Time Horizon")
 parser.add_argument("--delta_t", type=float, default=0.01 ,help="Integration step")
-parser.add_argument("--n_neurons", type=int, default=50)
+parser.add_argument("--n_neurons", type=int, default=100)
 
 parser.add_argument("--alpha",type=float, default=1.)
-parser.add_argument("--lambda_exp",type=float, default=1.)
+parser.add_argument("--lambda_exp",type=float, default=10.)
 parser.add_argument("--lambda_diss",type=float, default=1.)
 parser.add_argument("--m",type=float, default=1.)
 parser.add_argument("--m_zero",type=float, default=1.)
 parser.add_argument("--m_theta_n",type=float, default=1.)
 parser.add_argument("--m_phi",type=float, default=1.)
 parser.add_argument("--m_omega",type=float, default=1.)
+parser.add_argument("--tol",type=float, default=5.)
 
 
 parser.add_argument("--on_server", type=str, default="no", choices=["no","yes"])
 
-parser.add_argument("--plot_range", type=float, default=5)
+parser.add_argument("--plot_range", type=float, default=6)
 
 args = parser.parse_args()
 
@@ -50,8 +52,10 @@ m_phi = args.m_phi * np.ones(n_neurons)
 m_omega = args.m_omega * np.ones(n_neurons)
 alpha = args.alpha * np.ones(n_neurons)
 
+tol = args.tol
+
 def signal(t):
-    return np.sin(t)
+    return np.sin(t * 0.1)
 
 # Initialization
 
@@ -76,8 +80,25 @@ p_theta_omega = np.zeros(n_neurons)
 
 costate_variables = [p_phi,p_omega,p_xi,p_theta_n,p_theta_phi,p_theta_omega]
 
+n_reset = 0
+reset_list = []
+
 
 def make_step(states, costates, t):
+    reset = False
+
+    def reset_fun(i):
+        new_costates[2][i] = 0
+
+        # new_states[2][i] = 0
+        for j in range(n_neurons):
+            new_states[3][j,i] = 0.1 * np.random.rand(1)
+
+        new_states[4][i] = 0.1 * np.random.rand(1)
+        new_states[5][i] = 0.1 * np.random.rand(1)
+        return
+
+
     new_states = states
     new_costates = costates
 
@@ -113,15 +134,27 @@ def make_step(states, costates, t):
     new_costates[0] = costates[0] + delta_t * (-math.exp(lambda_exp * t) * (states[0] - signal(t)) + g * costates[1] * math.cos(states[0])/l - temp_sum1)
     new_costates[1] = costates[1] + delta_t * (-temp_sum2 + lambda_diss * costates[1] - costates[0])
 
+    # TODO giusto una prova...
+    if abs(new_costates[0]) > tol:
+        new_costates[0] = 0
+    if abs(new_costates[1]) > tol:
+        new_costates[1] = 0
+
     for i in range(n_neurons):
-        new_costates[2][i] = costates[2][i] + delta_t * (alpha[i] * costates[2][i]-temp_sum3[i])
+        new_costates[2][i] = costates[2][i] + delta_t * (alpha[i] * costates[2][i] - temp_sum3[i])
         if i == 0:
-            new_costates[2][i] += - delta_t * (costates[1]/m + m_zero * states[2][0] * math.exp(lambda_exp * t))
+            new_costates[2][i] += - delta_t * (costates[1] / m + m_zero * states[2][0] * math.exp(lambda_exp * t))
+
+        if abs(new_costates[2][i]) > tol: # comment these lines to control just the costates at the previous timme step
+            reset = True
+            reset_list.append(i)
+            reset_fun(i)
+
         for j in range(n_neurons):
             new_costates[3][i, j] = costates[3][i,j] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i])**2) * states[2][j])
         new_costates[4][i] = costates[4][i] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[0])
         new_costates[5][i] = costates[5][i] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[1])
-    return new_states,new_costates
+    return new_states,new_costates, reset
 
 def compute_H(states, costates, t):
     a = np.zeros(n_neurons)
@@ -137,7 +170,6 @@ def compute_H(states, costates, t):
     for i in range(n_neurons):
         H += -0.5 * np.exp(-lambda_exp * t) *(temp[i] + costates[4][i]**2/m_phi[i] + costates[5][i]**2/m_omega[i]) +\
             costates[2][i] * (-alpha[i] * states[2][i] + math.tanh(a[i]))
-
     return H
 
 
@@ -180,8 +212,13 @@ for t in t_array:
 
     print("Time:> ",t)
 
-    state_variables, costate_variables = make_step(state_variables, costate_variables, t)
+    state_variables, costate_variables, reset = make_step(state_variables, costate_variables, t)
+    if reset:
+        n_reset +=1
 
+print(f"# resets: %i"%n_reset)
+# print(t_array)
+# print(hamiltonian_for_plot)
 
 plt.figure(1)
 plt.title("States and costates")
@@ -199,12 +236,24 @@ plt.ylim(-args.plot_range,args.plot_range)
 plt.xlim(0,T)
 plt.legend()
 
-plt.savefig('./results.pdf')
+plt.savefig('./results.png')
 
 plt.figure(2)
 plt.title("Hamiltonian")
 plt.plot(t_array, hamiltonian_for_plot, label='$H$', color="red")
-plt.savefig('./hamiltonian.pdf')
+plt.savefig('./hamiltonian.png')
+
+plt.figure(3)
+plt.plot(t_array, [tol for _ in range(len(t_array))], color="black", linestyle=":")
+plt.plot(t_array, [-tol for _ in range(len(t_array))], color="black", linestyle=":")
+for i in range(n_neurons):
+    plt.plot(t_array, np.array(costates_for_plot2)[:, i], label= f"%i"%i)
+
+for k in range(len(reset_list)):
+    plt.plot(t_array[k],0, marker="+", color = "black", markersize=1 )
+
+plt.ylim(-args.plot_range,args.plot_range)
+plt.savefig('./costates.png')
 
 if args.on_server == "no":
     plt.show()
