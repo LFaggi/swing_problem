@@ -123,13 +123,23 @@ def make_step(states, costates, t):
         new_costates[5][i] = costates[5][i] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[1])
     return new_states,new_costates
 
-# def compute_H(states, costates, t):  ##TODO still to be done
-#     H = 0.5 *  np.exp(lambda_exp * t) * ((states[0]-signal(t))**2 + m_zero * states[2][0]**2) + costates[0] * states[1] + costates[1] * (-g * math.sin(states[0])/l - lambda_diss * states[1] + states[2][0]/m)
-#
-#     temp1 = 0
-#     temp2 = 0
-#     for i in range(n_neurons):
-#         temp1 =+ ...
+def compute_H(states, costates, t):
+    a = np.zeros(n_neurons)
+    temp = np.zeros(n_neurons)
+    for i in range(n_neurons):
+        for j in range(n_neurons):
+            a[i] += states[3][i,j] * states[2][j]
+            temp[i] += costates[3][i,j]**2/m_theta_n[i,j]
+        a[i] += states[4][i] * states[0] + states[5][i] * states[1]
+
+    H = 0.5 *  np.exp(lambda_exp * t) * ((states[0]-signal(t))**2 + m_zero * states[2][0]**2) +\
+        +costates[0] * states[1] + costates[1] * (-g * math.sin(states[0])/l - lambda_diss * states[1] + states[2][0]/m)
+    for i in range(n_neurons):
+        H += -0.5 * np.exp(-lambda_exp * t) *(temp[i] + costates[4][i]**2/m_phi[i] + costates[5][i]**2/m_omega[i]) +\
+            costates[2][i] * (-alpha[i] * states[2][i] + math.tanh(a[i]))
+
+    return H
+
 
 t_array = np.arange(0,T, delta_t)
 
@@ -147,6 +157,8 @@ costates_for_plot3 = []
 costates_for_plot4 = []
 costates_for_plot5 = []
 
+hamiltonian_for_plot = []
+
 signal_for_plot = []
 
 for t in t_array:
@@ -163,11 +175,16 @@ for t in t_array:
     costates_for_plot4.append(costate_variables[4].copy())
     costates_for_plot5.append(costate_variables[5].copy())
     signal_for_plot.append(signal(t).copy())
+
+    hamiltonian_for_plot.append(compute_H(state_variables, costate_variables, t))
+
     print("Time:> ",t)
-    # compute_H(state_variables, costate_variables, t) ##TODO still to be done
+
     state_variables, costate_variables = make_step(state_variables, costate_variables, t)
 
 
+plt.figure(1)
+plt.title("States and costates")
 plt.plot(t_array, states_for_plot0, label=r'$\phi$', color="blue")
 plt.plot(t_array, states_for_plot1, label=r'$\omega$', color="red")
 plt.plot(t_array, np.array(states_for_plot2)[:, 0], label=r'$\xi_0$', color="orange")
@@ -182,7 +199,14 @@ plt.ylim(-args.plot_range,args.plot_range)
 plt.xlim(0,T)
 plt.legend()
 
-plt.savefig('./results.png')
+plt.savefig('./results.pdf')
+
+plt.figure(2)
+plt.title("Hamiltonian")
+plt.plot(t_array, hamiltonian_for_plot, label='$H$', color="red")
+plt.savefig('./hamiltonian.pdf')
+
 if args.on_server == "no":
     plt.show()
 plt.close()
+
