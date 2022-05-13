@@ -14,12 +14,12 @@ except OSError:
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--T", type=float, default=5., help="Time Horizon")
+parser.add_argument("--T", type=float, default=10., help="Time Horizon")
 parser.add_argument("--delta_t", type=float, default=0.01, help="Integration step")
 parser.add_argument("--n_neurons", type=int, default=100)
 
-parser.add_argument("--alpha", type=float, default=1.)
-parser.add_argument("--lambda_exp", type=float, default=1.)
+parser.add_argument("--alpha", type=float, default=10)
+parser.add_argument("--lambda_exp", type=float, default=-1.)
 parser.add_argument("--lambda_diss", type=float, default=1.)
 parser.add_argument("--m", type=float, default=1.)
 parser.add_argument("--m_zero", type=float, default=1.)
@@ -27,10 +27,11 @@ parser.add_argument("--m_theta_n", type=float, default=1.)
 parser.add_argument("--m_phi", type=float, default=1.)
 parser.add_argument("--m_omega", type=float, default=1.)
 parser.add_argument("--tol", type=float, default=2.)
+parser.add_argument("--plot_range", type=float, default=6)
 
 parser.add_argument("--on_server", type=str, default="no", choices=["no", "yes"])
 
-parser.add_argument("--plot_range", type=float, default=6)
+
 
 args = parser.parse_args()
 
@@ -58,7 +59,8 @@ alpha = args.alpha * np.ones(n_neurons)
 tol = args.tol
 
 def signal(t):
-    return np.sin(t * 0.1)
+    # return np.sin(t * 0.01)
+    return 0
 
 # Initialization
 
@@ -92,7 +94,6 @@ def make_step(states, costates, t):
 
     def reset_fun(i, new_states, new_costates):
         new_costates[2][i] = 0
-        new_costates[1] = 0  ## Da lasciare?
 
         new_states[2][i] = 0
         for j in range(n_neurons):
@@ -254,18 +255,18 @@ plt.ylim(-args.plot_range, args.plot_range)
 plt.xlim(0, T)
 plt.legend()
 
-plt.savefig('./results.png')
+plt.savefig('./images/results.png')
 
 plt.figure(2)
 plt.title("Hamiltonian")
 plt.plot(t_array, hamiltonian_for_plot, label='$H$', color="red")
-plt.savefig('./hamiltonian.png')
+plt.savefig('./images/hamiltonian.png')
 
 plt.figure(3)
 plt.plot(t_array, [tol for _ in range(len(t_array))], color="black", linestyle=":")
 plt.plot(t_array, [-tol for _ in range(len(t_array))], color="black", linestyle=":")
 
-plt.plot(t_array, np.array(costates_for_plot2)[:, 0], label=r"$p_{xi_0}$")
+plt.plot(t_array, np.array(costates_for_plot2)[:, 0], label=r"$p_{\xi_0}$")
 for i in range(1, n_neurons):
     plt.plot(t_array, np.array(costates_for_plot2)[:, i])
 
@@ -274,7 +275,7 @@ for k in range(len(reset_list)):
 
 plt.ylim(-args.plot_range, args.plot_range)
 plt.legend()
-plt.savefig('./costates.png')
+plt.savefig('./images/costates.png')
 
 if args.on_server == "no":
     plt.show()
