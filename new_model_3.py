@@ -8,27 +8,29 @@ import os
 np.random.seed(7)
 
 try:
-    os.remove(r".\results.png")
-    os.remove(r".\hamiltonian.png")
+    os.remove(r"./images/results.png")
+    os.remove(r"./images/hamiltonian.png")
+    os.remove('./images/costates.png')
+    os.remove('./images/activations.png')
 except OSError:
     pass
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--T", type=float, default=50., help="Time Horizon")
+parser.add_argument("--T", type=float, default=30., help="Time Horizon")
 parser.add_argument("--delta_t", type=float, default=0.01, help="Integration step")
-parser.add_argument("--n_neurons", type=int, default=50)
+parser.add_argument("--n_neurons", type=int, default=20)
 
 parser.add_argument("--alpha", type=float, default=1.)
-parser.add_argument("--lambda_exp", type=float, default=1.)
+parser.add_argument("--lambda_exp", type=float, default=0.1)
 parser.add_argument("--lambda_diss", type=float, default=1.)
 parser.add_argument("--m", type=float, default=1.)
 parser.add_argument("--m_zero", type=float, default=1.)
-parser.add_argument("--m_theta_n", type=float, default=100.)
-parser.add_argument("--m_phi", type=float, default=100.)
-parser.add_argument("--m_omega", type=float, default=100.)
+parser.add_argument("--m_theta_n", type=float, default=20.)
+parser.add_argument("--m_phi", type=float, default=20.)
+parser.add_argument("--m_omega", type=float, default=20.)
 parser.add_argument("--tol", type=float, default=2.)
-parser.add_argument("--plot_range", type=float, default=6.)
+parser.add_argument("--plot_range", type=float, default=2.5)
 
 parser.add_argument("--on_server", type=str, default="no", choices=["no", "yes"])
 
@@ -61,12 +63,12 @@ tol = args.tol
 
 def signal(t):
     # return np.sin(t * 0.01)
-    return 0.1
+    return -0.1 * np.ones(1)
 
 # Initialization
 
 # State variables
-phi = 0.01
+phi = 0.
 omega = 0.01
 xi = 0.01 * np.random.rand(n_neurons)
 theta_n = 0.1 * np.random.rand(n_neurons, n_neurons)
@@ -88,6 +90,13 @@ costate_variables = [p_phi, p_omega, p_xi, p_theta_n, p_theta_phi, p_theta_omega
 
 n_reset = 0
 reset_list = []
+
+# initial activations:
+activations = np.zeros(n_neurons)
+for i in range(n_neurons):
+    for j in range(n_neurons):
+        activations[i] += state_variables[3][i, j] * state_variables[2][j]
+    activations[i] += state_variables[4][i] * state_variables[0] + state_variables[5][i] * state_variables[1]
 
 
 def make_step(states, costates, t):
@@ -157,13 +166,13 @@ def make_step(states, costates, t):
 
     if abs(new_costates[0]) > tol:
         reset = True
-        new_costates[0] = 0.
+        new_costates[0] = 0.5 * np.random.rand(1)
 
     new_costates[1] = costates[1] + delta_t * (-temp_sum2 + lambda_diss * costates[1] - costates[0])
 
     if abs(new_costates[1]) > tol:
         reset = True
-        new_costates[1] = 0.
+        new_costates[1] = 0.5 * np.random.rand(1)
 
     for i in range(n_neurons):
         new_costates[2][i] = costates[2][i] + delta_t * (alpha[i] * costates[2][i] - temp_sum3[i])
@@ -172,26 +181,26 @@ def make_step(states, costates, t):
 
         if abs(new_costates[2][i]) > tol:
             reset = True
-            new_costates[2][i] = 0
+            new_costates[2][i] = 0.5 * np.random.rand(1)
 
         for j in range(n_neurons):
             new_costates[3][i, j] = costates[3][i, j] + delta_t * (
                         -costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[2][j])
             if abs(new_costates[3][i, j]) > tol:
                 reset = True
-                new_costates[3][i, j] = 0.
+                new_costates[3][i, j] = 0.5 * np.random.rand(1)
 
         new_costates[4][i] = costates[4][i] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[0])
         if abs(new_costates[4][i]) > tol:
             reset = True
-            new_costates[4][i] = 0
+            new_costates[4][i] = 0.5 * np.random.rand(1)
 
         new_costates[5][i] = costates[5][i] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[1])
         if abs(new_costates[5][i]) > tol:
             reset = True
-            new_costates[5][i] = 0
+            new_costates[5][i] = 0.5 * np.random.rand(1)
 
-    return new_states.copy(), new_costates.copy(), reset
+    return new_states.copy(), new_costates.copy(), a, reset
 
 
 def compute_H(states, costates, t):
@@ -229,6 +238,8 @@ costates_for_plot3 = []
 costates_for_plot4 = []
 costates_for_plot5 = []
 
+activations_for_plot = []
+
 hamiltonian_for_plot = []
 
 signal_for_plot = []
@@ -246,13 +257,14 @@ for t in t_array:
     costates_for_plot3.append(costate_variables[3].copy())
     costates_for_plot4.append(costate_variables[4].copy())
     costates_for_plot5.append(costate_variables[5].copy())
+    activations_for_plot.append(activations.copy())
     signal_for_plot.append(signal(t))
 
     hamiltonian_for_plot.append(compute_H(state_variables, costate_variables, t))
 
     print("Time:> ", t)
 
-    state_variables, costate_variables, reset = make_step(state_variables, costate_variables, t)
+    state_variables, costate_variables, activations, reset = make_step(state_variables, costate_variables, t)
 
     if reset:
         reset_list.append(t)
@@ -270,7 +282,7 @@ plt.plot(t_array, costates_for_plot0, label=r'$p_\phi$', color="blue", linestyle
 plt.plot(t_array, costates_for_plot1, label=r'$p_\omega$', color="red", linestyle="-.")
 plt.plot(t_array, np.array(costates_for_plot2)[:, 0], label=r'$p_{\xi_0}$', color="orange", linestyle="-.")
 
-# plt.plot(t_array, signal_for_plot, label="Signal", color="green")
+plt.plot(t_array, signal_for_plot, label="Signal", color="green")
 
 plt.ylim(-args.plot_range, args.plot_range)
 plt.xlim(0, T)
@@ -297,6 +309,15 @@ for k in range(len(reset_list)):
 plt.ylim(-args.plot_range, args.plot_range)
 plt.legend()
 plt.savefig('./images/costates.png')
+
+plt.figure(4)
+plt.title("Activations")
+
+plt.plot(t_array, np.array(activations_for_plot)[:, 0],label=r"$a_0$")
+for i in range(1, n_neurons):
+    plt.plot(t_array, np.array(activations_for_plot)[:, i])
+plt.legend()
+plt.savefig('./images/activations.png')
 
 if args.on_server == "no":
     plt.show()

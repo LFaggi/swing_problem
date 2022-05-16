@@ -4,6 +4,9 @@ import argparse
 import os
 import copy
 
+# Exopenent exp(-lambda * (T-t))
+
+
 np.random.seed(7)
 
 try:
