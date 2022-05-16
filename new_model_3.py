@@ -2,7 +2,8 @@ import numpy as np
 import math
 import argparse
 import os
-import copy
+
+# Reset of costates if |costate| > toll; states evolve continuously in time instead
 
 np.random.seed(7)
 
@@ -92,24 +93,24 @@ reset_list = []
 def make_step(states, costates, t):
     reset = False
 
-    def reset_fun(i, new_states, new_costates):
-        new_costates[2][i] = 0
-        for j in range(n_neurons):
-            new_costates[3][i,j]=0
-        new_costates[4][i] = 0
-        new_costates[5][i] = 0
-
-
-        new_states[2][i] = 0
-        for j in range(n_neurons):
-            new_states[3][j, i] = 0.1 * np.random.rand(1)
-            # new_states[3][j, i] = 0.
-
-        new_states[4][i] = 0.1 * np.random.rand(1)
-        new_states[5][i] = 0.1 * np.random.rand(1)
-        # new_states[4][i] = 0.
-        # new_states[5][i] = 0.
-        return
+    # def reset_fun(i, new_states, new_costates):
+    #     new_costates[2][i] = 0
+    #     for j in range(n_neurons):
+    #         new_costates[3][i,j]=0
+    #     new_costates[4][i] = 0
+    #     new_costates[5][i] = 0
+    #
+    #
+    #     new_states[2][i] = 0
+    #     for j in range(n_neurons):
+    #         new_states[3][j, i] = 0.1 * np.random.rand(1)
+    #         # new_states[3][j, i] = 0.
+    #
+    #     new_states[4][i] = 0.1 * np.random.rand(1)
+    #     new_states[5][i] = 0.1 * np.random.rand(1)
+    #     # new_states[4][i] = 0.
+    #     # new_states[5][i] = 0.
+    #     return
 
     new_states = [np.zeros(1), np.zeros(1), np.zeros(xi.shape), np.zeros(theta_n.shape),
                   np.zeros(theta_phi.shape), np.zeros(theta_omega.shape)]
@@ -153,13 +154,16 @@ def make_step(states, costates, t):
     new_costates[0] = costates[0] + delta_t * (
                 -math.exp(lambda_exp * (t-T)) * (states[0] - signal(t)) + g * costates[1] * math.cos(
             states[0]) / l - temp_sum1)
+
+    if abs(new_costates[0]) > tol:
+        reset = True
+        new_costates[0] = 0.
+
     new_costates[1] = costates[1] + delta_t * (-temp_sum2 + lambda_diss * costates[1] - costates[0])
 
-    # # TODO giusto una prova...
-    # if abs(new_costates[0]) > tol:
-    #     new_costates[0] = 0
-    # if abs(new_costates[1]) > tol:
-    #     new_costates[1] = 0
+    if abs(new_costates[1]) > tol:
+        reset = True
+        new_costates[1] = 0.
 
     for i in range(n_neurons):
         new_costates[2][i] = costates[2][i] + delta_t * (alpha[i] * costates[2][i] - temp_sum3[i])
@@ -168,13 +172,25 @@ def make_step(states, costates, t):
 
         if abs(new_costates[2][i]) > tol:
             reset = True
-            reset_fun(i, new_states, new_costates)
+            new_costates[2][i] = 0
 
         for j in range(n_neurons):
             new_costates[3][i, j] = costates[3][i, j] + delta_t * (
                         -costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[2][j])
+            if abs(new_costates[3][i, j]) > tol:
+                reset = True
+                new_costates[3][i, j] = 0.
+
         new_costates[4][i] = costates[4][i] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[0])
+        if abs(new_costates[4][i]) > tol:
+            reset = True
+            new_costates[4][i] = 0
+
         new_costates[5][i] = costates[5][i] + delta_t * (-costates[2][i] * (1 - math.tanh(a[i]) ** 2) * states[1])
+        if abs(new_costates[5][i]) > tol:
+            reset = True
+            new_costates[5][i] = 0
+
     return new_states.copy(), new_costates.copy(), reset
 
 
