@@ -3,6 +3,7 @@ import math
 import argparse
 import os
 
+# Exponent exp(-lambda * (T-t))
 # Reset of costates if |costate| > toll; states evolve continuously in time instead
 
 np.random.seed(7)
@@ -154,10 +155,10 @@ def make_step(states, costates, t):
     temp_sum2 = 0
     temp_sum3 = np.zeros(n_neurons)
     for i in range(n_neurons):
-        temp_sum1 += (1 - math.tanh(a[i]) ** 2) * costates[2][i] * states[4][i]  # in costate update equation for phi
-        temp_sum2 += (1 - math.tanh(a[i]) ** 2) * costates[2][i] * states[5][i]  # in costate update equation for omega
+        temp_sum1 += alpha[i] * (1 - math.tanh(a[i]) ** 2) * costates[2][i] * states[4][i]  # in costate update equation for phi
+        temp_sum2 += alpha[i] * (1 - math.tanh(a[i]) ** 2) * costates[2][i] * states[5][i]  # in costate update equation for omega
         for j in range(n_neurons):
-            temp_sum3[i] += (1 - math.tanh(a[j]) ** 2) * states[3][j, i] * costates[2][
+            temp_sum3[i] += alpha[j] * (1 - math.tanh(a[j]) ** 2) * states[3][j, i] * costates[2][
                 j]  # in costate update equation for xi
 
     new_costates[0] = costates[0] + delta_t * (
