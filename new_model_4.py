@@ -20,20 +20,20 @@ except OSError:
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--T", type=float, default=30., help="Time Horizon")
+parser.add_argument("--T", type=float, default=10., help="Time Horizon")
 parser.add_argument("--delta_t", type=float, default=0.01, help="Integration step")
-parser.add_argument("--n_neurons", type=int, default=20)
-parser.add_argument("--n_c", type=int, default=10)
-parser.add_argument("--box_width", type=float, default=10.)
+parser.add_argument("--n_neurons", type=int, default=100)
+parser.add_argument("--n_c", type=int, default=50)
+parser.add_argument("--box_width", type=float, default=2.)
 
 parser.add_argument("--alpha", type=float, default=1.)
 parser.add_argument("--lambda_exp", type=float, default=0.1)
 parser.add_argument("--lambda_diss", type=float, default=1.)
 parser.add_argument("--m", type=float, default=1.)
 parser.add_argument("--m_zero", type=float, default=1.)
-parser.add_argument("--m_theta_n", type=float, default=20.)
-parser.add_argument("--m_phi", type=float, default=20.)
-parser.add_argument("--m_omega", type=float, default=20.)
+parser.add_argument("--m_theta_n", type=float, default=1.)
+parser.add_argument("--m_phi", type=float, default=1.)
+parser.add_argument("--m_omega", type=float, default=1.)
 parser.add_argument("--tol", type=float, default=2.)
 parser.add_argument("--plot_range", type=float, default=2.5)
 
@@ -157,19 +157,19 @@ def make_step(states, costates, t):
             new_states[3][i, j] = states[3][i, j] + delta_t * (
                         - math.exp(-lambda_exp * (t-T)) * costates[3][i, j] / m_theta_n[i, j])
 
-            if new_states[3][i, j] > box_width:
+            if abs(new_states[3][i, j]) > box_width:
                 new_states[3][i, j] = states[3][i, j]
 
         new_states[4][i] = states[4][i] + delta_t * (
                 - math.exp(-lambda_exp * (t-T)) * costates[4][i] / m_phi[i])
 
-        if new_states[4][i] >  box_width:
+        if abs(new_states[4][i]) >  box_width:
             new_states[4][i] = states[4][i]
 
         new_states[5][i] = states[5][i] + delta_t * (
                 - math.exp(-lambda_exp * (t-T)) * costates[5][i] / m_omega[i])
 
-        if new_states[5][i] >  box_width:
+        if abs(new_states[5][i]) >  box_width:
             new_states[5][i] = states[5][i]
 
     # costates update
