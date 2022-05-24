@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 
 
 T = 2
-buffer = 0.2
-delta_t = 0.01
+buffer = 0.25
+delta_t = 0.005
 iterations_per_step = 10
 
 initial_phi = 0
@@ -41,16 +41,17 @@ def make_step(t, initial_states, final_costates, costate_init = None):
     t_list = np.arange(t, t+buffer, delta_t)
 
     states_list = [[0,0] for _ in range(len(t_list))]
-    states_list[0] = initial_states
+    states_list[0] = initial_states.copy()
     if costate_init is None:
         costates_list = [[0,0] for _ in range(len(t_list))]
     else:
         costates_list = costate_init
-    costates_list[-1] = final_costates
+    costates_list[-1] = final_costates.copy()
 
     for i in range(iterations_per_step):
         states = initial_states
         costates = final_costates
+
         for k in range(0, len(t_list)-1):
             states[0], states[1] = forward_step(states, costates_list[k], t_list[k])
             states_list[k+1] = [states[0],states[1]]
