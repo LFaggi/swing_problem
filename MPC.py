@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 
 T = 2
-buffer = 0.25
+buffer = 0.3
 delta_t = 0.005
 iterations_per_step = 10
 
