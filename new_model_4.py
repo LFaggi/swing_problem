@@ -6,9 +6,9 @@ import os
 # Exponent exp(-lambda * (T-t))
 # Reset of costates if |costate| > toll; states evolve continuously in time instead
 # Control given by the average of n_c neurons
-# weights constrained inside a box
+# weights constrained inside a box with a width "box_width"
 
-np.random.seed(7)
+# np.random.seed(7)
 
 try:
     os.remove(r"./images/results.png")
@@ -20,20 +20,20 @@ except OSError:
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--T", type=float, default=10., help="Time Horizon")
+parser.add_argument("--T", type=float, default=100., help="Time Horizon")
 parser.add_argument("--delta_t", type=float, default=0.01, help="Integration step")
-parser.add_argument("--n_neurons", type=int, default=100)
-parser.add_argument("--n_c", type=int, default=50)
-parser.add_argument("--box_width", type=float, default=2.)
+parser.add_argument("--n_neurons", type=int, default=25)
+parser.add_argument("--n_c", type=int, default=10)
+parser.add_argument("--box_width", type=float, default=5.)
 
-parser.add_argument("--alpha", type=float, default=1.)
+parser.add_argument("--alpha", type=float, default=0.05)
 parser.add_argument("--lambda_exp", type=float, default=0.1)
 parser.add_argument("--lambda_diss", type=float, default=1.)
 parser.add_argument("--m", type=float, default=1.)
 parser.add_argument("--m_zero", type=float, default=1.)
-parser.add_argument("--m_theta_n", type=float, default=1.)
-parser.add_argument("--m_phi", type=float, default=1.)
-parser.add_argument("--m_omega", type=float, default=1.)
+parser.add_argument("--m_theta_n", type=float, default=0.1)
+parser.add_argument("--m_phi", type=float, default=0.1)
+parser.add_argument("--m_omega", type=float, default=0.1)
 parser.add_argument("--tol", type=float, default=2.)
 parser.add_argument("--plot_range", type=float, default=2.5)
 
@@ -68,8 +68,8 @@ tol = args.tol
 
 def signal(t):
     # return np.sin(t * 0.01)
-    return -0.1 * np.ones(1)
-
+    # return -0.2 * np.ones(1)
+    return 0.
 # Initialization
 
 # State variables
@@ -178,7 +178,7 @@ def make_step(states, costates, t):
     temp_sum3 = np.zeros(n_neurons)
     for i in range(n_neurons):
         temp_sum1 += alpha[i] * (1 - math.tanh(a[i]) ** 2) * costates[2][i] * states[4][i]             # in costate update equation for phi
-        temp_sum2 += alpha[i] * (1 - math.tanh(a[i]) ** 2) * costates[2][i] * states[5][i]               # in costate update equation for omega
+        temp_sum2 += alpha[i] * (1 - math.tanh(a[i]) ** 2) * costates[2][i] * states[5][i]             # in costate update equation for omega
         for j in range(n_neurons):
             temp_sum3[i] += alpha[j] * (1 - math.tanh(a[j]) ** 2) * states[3][j, i] * costates[2][j]   # in costate update equation for xi
 
@@ -222,8 +222,7 @@ def make_step(states, costates, t):
             reset = True
             new_costates[5][i] = 0.5 * np.random.rand(1)
 
-    return new_states.copy(), new_costates.copy(), a, reset
-
+    return new_states.copy(), new_costates.copy(), a, control, reset
 
 def compute_H(states, costates, t):
     # control as average of first n_c neurons
@@ -266,6 +265,7 @@ costates_for_plot4 = []
 costates_for_plot5 = []
 
 activations_for_plot = []
+control_for_plot = []
 
 hamiltonian_for_plot = []
 
@@ -291,7 +291,9 @@ for t in t_array:
 
     print("Time:> ", t)
 
-    state_variables, costate_variables, activations, reset = make_step(state_variables, costate_variables, t)
+    state_variables, costate_variables, activations, control, reset = make_step(state_variables, costate_variables, t)
+
+    control_for_plot.append(control)
 
     if reset:
         reset_list.append(t)
@@ -303,13 +305,12 @@ plt.figure(1)
 plt.title("States and costates")
 plt.plot(t_array, states_for_plot0, label=r'$\phi$', color="blue")
 plt.plot(t_array, states_for_plot1, label=r'$\omega$', color="red")
-plt.plot(t_array, np.array(states_for_plot2)[:, 0], label=r'$\xi_0$', color="orange")
 
 plt.plot(t_array, costates_for_plot0, label=r'$p_\phi$', color="blue", linestyle="-.")
 plt.plot(t_array, costates_for_plot1, label=r'$p_\omega$', color="red", linestyle="-.")
-plt.plot(t_array, np.array(costates_for_plot2)[:, 0], label=r'$p_{\xi_0}$', color="orange", linestyle="-.")
 
 plt.plot(t_array, signal_for_plot, label="Signal", color="green")
+plt.plot(t_array, control_for_plot, label=r'Control', color="orange")
 
 plt.ylim(-args.plot_range, args.plot_range)
 plt.xlim(0, T)
