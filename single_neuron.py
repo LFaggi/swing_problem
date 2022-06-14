@@ -9,21 +9,21 @@ import numpy as np
 # dot(xi) = alpha( -xi+sigma(w u + b))
 # dot(u) =-p_w / (m_v * diss_function)
 # dot p_xi = - diss_function * [(xi - u) + m_xi (xi - sigma(w u + b))] + p_xi alpha
-# dot p_w = -m_xi (xi - sigma(w u +b)) sigma'(w u + b) u diss_function - p_xi alpha sigma'(w u) u
+# dot p_w = -m_xi (xi - sigma(w u +b)) sigma'(w u + b) u diss_function - p_xi alpha sigma'(w u + b) u
 
-T = 10
+T = 20
 delta_t = 0.01
 
 def input(t):
-    return 2  # the solution should be pi/4
+    return 0.5
 
 class NeuralAgent:
     def __init__(self):
-        self.xi = 2
+        self.xi = 0.5
         self.omega = 0. * np.random.rand(1)
 
-        self.p_xi = 0.1
-        self.p_omega = 0.1
+        self.p_xi = 1
+        self.p_omega = 1
 
     @staticmethod
     def activation(x):
@@ -69,79 +69,87 @@ class EnviromentalAgent:
     def __init__(self):
         self.env_parameters = [1, 1, 1, 1, 1]
 
-    @staticmethod
-    def dissipation_function(t):
+    def dissipation_function(self, t, agent, **kwargs):
         return 1
 
-    @staticmethod
-    def m_xi_function(t):
+    def m_v_function(self, t, agent, **kwargs):
         return 1
 
-    def alpha_function(self, t, agent, b):
-        num = self.dissipation_function(t) * input(t) * self.m_xi_function(t) * (agent.xi - agent.activation(agent.omega * input(t) + b)) * agent.activation_prime(agent.omega * input(t) + b)
-        den = agent.p_xi * agent.activation_prime(agent.omega * input(t) + b) * input(t)
-        if agent.p_omega>=0:
-            if den > 0:
-                return - num / den + 0.5
-            elif den < 0:
-                return num / abs(den) - 0.5
-        elif agent.p_omega<0:
-            if den > 0:
-                return - num / den - 0.5
-            elif den < 0:
-                return num / abs(den) + 0.5
+    # @staticmethod
+    # def m_xi_function(t):
+    #     return 1
 
-    def b_function(self, t, agent):
-        diss = self.dissipation_function(t)
-        m_xi = self.m_xi_function(t)
-        arg = (diss * (agent.xi - input(t)) + diss * m_xi * agent.xi - agent.p_xi * self.env_parameters[1])/(diss * m_xi)
-        if arg>=1:
-            arg=0.95
-        elif arg <=-1:
-            arg = -0.95
-        if agent.p_xi >= 0:
-            return np.arctanh(arg) - agent.omega * input(t) - 0.5
-        elif agent.p_xi < 0:
-            return np.arctanh(arg) - agent.omega * input(t) + 0.5
-
-
-    # def alpha_function(self, t, agent, m_xi):
-    #     if agent.p_xi >= 0:
-    #         return self.dissipation_function(t) * (agent.xi-input(t) + m_xi * (agent.xi - agent.activation(agent.omega * input(t))))/agent.p_xi - 0.1
-    #     elif agent.p_xi<0:
-    #         return -self.dissipation_function(t) * (agent.xi-input(t) + m_xi * (agent.xi - agent.activation(agent.omega * input(t))))/abs(agent.p_xi) - 0.1
+    # def alpha_function(self, t, agent, b):
+    #     num = self.dissipation_function(t) * input(t) * self.m_xi_function(t) * (agent.xi - agent.activation(agent.omega * input(t) + b)) * agent.activation_prime(agent.omega * input(t) + b)
+    #     den = agent.p_xi * agent.activation_prime(agent.omega * input(t) + b) * input(t)
+    #     if agent.p_omega>=0:
+    #         if den > 0:
+    #             return - num / den + 0.5
+    #         elif den < 0:
+    #             return num / abs(den) - 0.5
+    #     elif agent.p_omega<0:
+    #         if den > 0:
+    #             return - num / den - 0.5
+    #         elif den < 0:
+    #             return num / abs(den) + 0.5
     #
-    # def m_xi_function(self, t, agent):
-    #     temp = (agent.xi - agent.activation(agent.omega * input(t)) * agent.activation_prime(agent.omega * input(t)) * input(t) * self.dissipation_function(t))
-    #     if agent.p_omega >= 0:
-    #         if temp >=0:
-    #             return -(agent.p_xi * self.alpha_function(t,agent, self.env_parameters[2]) * input(t) * agent.activation_prime(agent.omega * input(t)))/temp + 0.1
-    #         elif temp < 0:
-    #             return +(agent.p_xi * self.alpha_function(t,agent, self.env_parameters[2]) * input(t) * agent.activation_prime(agent.omega * input(t)))/abs(temp) - 0.1
-    #     if agent.p_omega < 0:
-    #         if temp >= 0:
-    #             return -(agent.p_xi * self.alpha_function(t, agent, self.env_parameters[2]) * input(
-    #                 t) * agent.activation_prime(agent.omega * input(t))) / temp - 0.1
-    #         elif temp < 0:
-    #             return +(agent.p_xi * self.alpha_function(t, agent, self.env_parameters[2]) * input(
-    #                 t) * agent.activation_prime(agent.omega * input(t))) / abs(temp) + 0.1
+    # def b_function(self, t, agent):
+    #     diss = self.dissipation_function(t)
+    #     m_xi = self.m_xi_function(t)
+    #     arg = (diss * (agent.xi - input(t)) + diss * m_xi * agent.xi - agent.p_xi * self.env_parameters[1])/(diss * m_xi)
+    #     if arg>=1:
+    #         arg=0.95
+    #     elif arg <=-1:
+    #         arg = -0.95
+    #     if agent.p_xi >= 0:
+    #         return np.arctanh(arg) - agent.omega * input(t) - 0.5
+    #     elif agent.p_xi < 0:
+    #         return np.arctanh(arg) - agent.omega * input(t) + 0.5
 
-    @staticmethod
-    def m_v_function(t):
-        return 1
+    def b_function(self,t, agent,**kwargs):
+        return 0
+
+    def alpha_function(self, t, agent, **kwargs):
+        m_xi  = kwargs.get('m_xi', None)
+        a = self.dissipation_function(t,agent) * (agent.xi-input(t) + m_xi * (agent.xi - agent.activation(agent.omega * input(t))))
+        if agent.p_xi >= 0:
+            return a / (agent.p_xi + 1e-03) - 0.1
+        elif agent.p_xi<0:
+            return -a / abs(agent.p_xi + 1e-03) - 0.1
+
+    def m_xi_function(self, t, agent, **kwargs):
+        alpha = kwargs.get('alpha', None)
+        num = (agent.p_xi * alpha * input(t) * agent.activation_prime(agent.omega * input(t)))
+        den = (agent.xi - agent.activation(agent.omega * input(t)) * agent.activation_prime(agent.omega * input(t)) * input(t) * self.dissipation_function(t,agent))
+        if agent.p_omega >= 0:
+            if den >=0:
+                return -num/(abs(den) + 1e-03) + 0.1
+            elif den < 0:
+                return num/(abs(den) + 1e-03) - 0.1
+        if agent.p_omega < 0:
+            if den >= 0:
+                return -num/(abs(den) + 1e-03) - 0.1
+            elif den < 0:
+                return num/(abs(den) + 1e-03) + 0.1
 
     def update_env_parameters(self,t, agent):
         # In the form dissipation_factor, alpha, m_xi, m_v
-        diss = self.dissipation_function(t)
-        m_xi = self.m_xi_function(t)
-        b =  self.b_function(t, agent)
-        alpha = self.alpha_function(t, agent,b)
+        # diss = self.dissipation_function(t)
+        # m_xi = self.m_xi_function(t)
+        # b = self.b_function(t, agent)
+        # alpha = self.alpha_function(t, agent,b)
+        # m_v = self.m_v_function(t)
 
-        m_v = self.m_v_function(t)
+        alpha_old = self.env_parameters[1]
+        m_xi_old = self.env_parameters[2]
+
+        diss = self.dissipation_function(t,agent)
+        alpha = self.alpha_function(t, agent, m_xi=m_xi_old)
+        m_xi = self.m_xi_function(t, agent, alpha=alpha_old)
+        m_v = self.m_v_function(t,agent)
+        b = self.b_function(t,agent)
 
         self.env_parameters = [diss, alpha, m_xi, m_v, b]
-
-        # self.env_parameters = [self.dissipation_function(t), self.alpha_function(t, agent),  self.m_xi_function(t, agent),  self.m_v_function(t)]
 
 if __name__ == "__main__":
 
