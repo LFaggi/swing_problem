@@ -19,7 +19,7 @@ def input(t):
 
 class NeuralAgent:
     def __init__(self):
-        self.xi = input(0)
+        self.xi = 0.5
         self.omega = 0. * np.random.rand(1)
 
         self.p_xi = 1
@@ -115,18 +115,18 @@ class EnviromentalAgent:
         m_xi  = kwargs.get('m_xi', None)
         delta1 = 0.1
         threshold = 1e-01
-        a = self.dissipation_function(t,agent) * (agent.xi-input(t) + m_xi * (agent.xi - agent.activation(agent.omega * input(t) + self.b_function(t,agent))))
+        a = self.dissipation_function(t,agent) * (agent.xi-input(t) + m_xi * (agent.xi - agent.activation(agent.omega * input(t))))
         if agent.p_xi >= 0:
-            return a / (abs(agent.p_xi) + threshold) - delta1
+            return a / (agent.p_xi + threshold) - delta1
         elif agent.p_xi<0:
-            return -a / (abs(agent.p_xi) + threshold) - delta1
+            return -a / abs(agent.p_xi + threshold) - delta1
 
     def m_xi_function(self, t, agent, **kwargs):
         alpha = kwargs.get('alpha', None)
-        delta2 = 0.1
-        threshold = 1e-1
-        num = (agent.p_xi * alpha * input(t) * agent.activation_prime(agent.omega * input(t) + self.b_function(t,agent)))
-        den = (agent.xi - agent.activation(agent.omega * input(t) + self.b_function(t,agent)) * agent.activation_prime(agent.omega * input(t) + self.b_function(t,agent)) * input(t) * self.dissipation_function(t,agent))
+        delta2 = 0.8
+        threshold =  1e-01
+        num = (agent.p_xi * alpha * input(t) * agent.activation_prime(agent.omega * input(t)))
+        den = (agent.xi - agent.activation(agent.omega * input(t)) * agent.activation_prime(agent.omega * input(t)) * input(t) * self.dissipation_function(t,agent))
         if agent.p_omega >= 0:
             if den >=0:
                 return -num/(abs(den) + threshold) + delta2
