@@ -9,20 +9,20 @@ import numpy as np
 # dot(xi) = alpha( -xi+sigma(w u + b))
 # dot(u) =-p_w / (m_v * diss_function)
 # dot p_xi = - diss_function * [(xi - u) + m_xi (xi - sigma(w u + b))] + p_xi alpha
-# dot p_w = -m_xi (xi - sigma(w u +b)) sigma'(w u + b) u diss_function - p_xi alpha sigma'(w u + b) u
+# dot p_w = m_xi (xi - sigma(w u +b)) sigma'(w u + b) u diss_function - p_xi alpha sigma'(w u + b) u
 
 T = 20
-delta_t = 0.01
+delta_t = 0.001
 
 def input(t):
-    return 0.5
+    return 0.2 * np.sin(t)
 
 class NeuralAgent:
     def __init__(self):
         self.xi = input(0)
-        self.omega = 0. * np.random.rand(1)
+        self.omega = 0.1 * np.random.rand(1)
 
-        self.p_xi = 1
+        self.p_xi = 2
         self.p_omega = 1
 
     @staticmethod
@@ -54,7 +54,7 @@ class NeuralAgent:
         self.omega = omega - delta_t * p_omega/(m_v * dissipation_factor)
 
         self.p_xi = p_xi + delta_t *(- dissipation_factor * ((xi - input) + m_xi * (xi - self.activation(omega * input + b))) + p_xi * alpha)
-        self.p_omega = p_omega + delta_t * (- dissipation_factor * input * m_xi * (xi - self.activation(omega * input + b)) * self.activation_prime(omega * input + b) - p_xi * alpha * self.activation_prime(omega * input + b) * input)
+        self.p_omega = p_omega + delta_t * (dissipation_factor * input * m_xi * (xi - self.activation(omega * input + b)) * self.activation_prime(omega * input + b) - p_xi * alpha * self.activation_prime(omega * input + b) * input)
 
     def evaluate_current_hamiltonian(self,env_parameters, input):
         dissipation_factor, alpha, m_xi, m_v, b = self.get_env_parameters(env_parameters)
@@ -71,7 +71,6 @@ class EnviromentalAgent:
 
     def dissipation_function(self, t, agent, **kwargs):
         return np.exp(- 0. * (T- t))
-        # return 1
 
 
     def m_v_function(self, t, agent, **kwargs):
@@ -113,30 +112,36 @@ class EnviromentalAgent:
 
     def alpha_function(self, t, agent, **kwargs):
         m_xi  = kwargs.get('m_xi', None)
-        delta1 = 0.1
+        no_update_threshold = 0.
+        delta1 = 0.5
         threshold = 1e-01
         a = self.dissipation_function(t,agent) * (agent.xi-input(t) + m_xi * (agent.xi - agent.activation(agent.omega * input(t) + self.b_function(t,agent))))
-        if agent.p_xi >= 0:
+        if agent.p_xi >= no_update_threshold:
             return a / (abs(agent.p_xi) + threshold) - delta1
-        elif agent.p_xi<0:
+        if agent.p_xi< -no_update_threshold:
             return -a / (abs(agent.p_xi) + threshold) - delta1
+        else:
+            return self.env_parameters[1]
 
     def m_xi_function(self, t, agent, **kwargs):
         alpha = kwargs.get('alpha', None)
-        delta2 = 0.1
-        threshold = 1e-1
+        no_update_threshold = 0.
+        delta2 = 0.8
+        threshold = 1e-01
         num = (agent.p_xi * alpha * input(t) * agent.activation_prime(agent.omega * input(t) + self.b_function(t,agent)))
         den = (agent.xi - agent.activation(agent.omega * input(t) + self.b_function(t,agent)) * agent.activation_prime(agent.omega * input(t) + self.b_function(t,agent)) * input(t) * self.dissipation_function(t,agent))
-        if agent.p_omega >= 0:
+        if agent.p_omega >= no_update_threshold:
             if den >=0:
-                return -num/(abs(den) + threshold) + delta2
-            elif den < 0:
                 return num/(abs(den) + threshold) - delta2
-        if agent.p_omega < 0:
-            if den >= 0:
-                return -num/(abs(den) + threshold) - delta2
             elif den < 0:
+                return -num/(abs(den) + threshold) + delta2
+        if agent.p_omega < -no_update_threshold:
+            if den >= 0:
                 return num/(abs(den) + threshold) + delta2
+            elif den < 0:
+                return -num/(abs(den) + threshold) - delta2
+        else:
+            return self.env_parameters[2]
 
     def update_env_parameters(self,t, agent):
         # In the form dissipation_factor, alpha, m_xi, m_v
@@ -149,11 +154,26 @@ class EnviromentalAgent:
         alpha_old = self.env_parameters[1]
         m_xi_old = self.env_parameters[2]
 
+        # diss = self.dissipation_function(t,agent)
+        # alpha = self.alpha_function(t, agent, m_xi=m_xi_old)  # TODO is this right to remove self-recursion in this way?
+        # m_xi = self.m_xi_function(t, agent, alpha=alpha_old)
+        # m_v = self.m_v_function(t,agent)
+        # b = self.b_function(t,agent)
+
         diss = self.dissipation_function(t,agent)
-        alpha = self.alpha_function(t, agent, m_xi=m_xi_old)
         m_xi = self.m_xi_function(t, agent, alpha=alpha_old)
+        alpha = self.alpha_function(t, agent, m_xi=m_xi)  # TODO is this right to remove self-recursion in this way?
         m_v = self.m_v_function(t,agent)
         b = self.b_function(t,agent)
+
+        # diss = self.dissipation_function(t,agent)
+        # m_v = self.m_v_function(t,agent)
+        # b = self.b_function(t,agent)
+        # alpha = alpha_old
+        # for k in range(10):
+        #     m_xi = self.m_xi_function(t, agent, alpha=alpha)
+        #     alpha = self.alpha_function(t, agent, m_xi=m_xi)  # TODO is this right to remove self-recursion in this way?
+
 
         self.env_parameters = [diss, alpha, m_xi, m_v, b]
 

@@ -20,7 +20,7 @@ def input(t):
 class NeuralAgent:
     def __init__(self):
         self.xi = 0.5
-        self.omega = 0. * np.random.rand(1)
+        self.omega = 0.1 * np.random.rand(1)
 
         self.p_xi = 1
         self.p_omega = 1
@@ -127,16 +127,18 @@ class EnviromentalAgent:
         threshold =  1e-01
         num = (agent.p_xi * alpha * input(t) * agent.activation_prime(agent.omega * input(t)))
         den = (agent.xi - agent.activation(agent.omega * input(t)) * agent.activation_prime(agent.omega * input(t)) * input(t) * self.dissipation_function(t,agent))
-        if agent.p_omega >= 0:
+        if agent.p_omega > 0:
             if den >=0:
                 return -num/(abs(den) + threshold) + delta2
             elif den < 0:
                 return num/(abs(den) + threshold) - delta2
-        if agent.p_omega < 0:
+        elif agent.p_omega < 0:
             if den >= 0:
                 return -num/(abs(den) + threshold) - delta2
             elif den < 0:
                 return num/(abs(den) + threshold) + delta2
+
+
 
     def update_env_parameters(self,t, agent):
         # In the form dissipation_factor, alpha, m_xi, m_v
@@ -197,6 +199,7 @@ if __name__ == "__main__":
 
     for i in range(1,len(t_array)):
         t = t_array[i]
+        # if (abs(agent.p_omega) > 0.5 or abs(agent.p_xi) > 0.5):
         envs.update_env_parameters(t, agent)
         update_list_of_par(envs.env_parameters)
         agent.update_states_costates(envs.env_parameters, input(t))
