@@ -12,17 +12,17 @@ import numpy as np
 # dot p_w = m_xi (xi - sigma(w u +b)) sigma'(w u + b) u diss_function - p_xi alpha sigma'(w u + b) u
 
 T = 20
-delta_t = 0.001
+delta_t = 0.01
 
 def input(t):
-    return 0.2 * np.sin(t)
+    return 0.5 + 0.1 * np.sin(t)
 
 class NeuralAgent:
     def __init__(self):
         self.xi = input(0)
         self.omega = 0.1 * np.random.rand(1)
 
-        self.p_xi = 2
+        self.p_xi = 1
         self.p_omega = 1
 
     @staticmethod
@@ -112,7 +112,7 @@ class EnviromentalAgent:
 
     def alpha_function(self, t, agent, **kwargs):
         m_xi  = kwargs.get('m_xi', None)
-        no_update_threshold = 0.
+        no_update_threshold = 0.001
         delta1 = 0.5
         threshold = 1e-01
         a = self.dissipation_function(t,agent) * (agent.xi-input(t) + m_xi * (agent.xi - agent.activation(agent.omega * input(t) + self.b_function(t,agent))))
@@ -125,8 +125,8 @@ class EnviromentalAgent:
 
     def m_xi_function(self, t, agent, **kwargs):
         alpha = kwargs.get('alpha', None)
-        no_update_threshold = 0.
-        delta2 = 0.8
+        no_update_threshold = 0.001
+        delta2 = 0.5
         threshold = 1e-01
         num = (agent.p_xi * alpha * input(t) * agent.activation_prime(agent.omega * input(t) + self.b_function(t,agent)))
         den = (agent.xi - agent.activation(agent.omega * input(t) + self.b_function(t,agent)) * agent.activation_prime(agent.omega * input(t) + self.b_function(t,agent)) * input(t) * self.dissipation_function(t,agent))
@@ -248,6 +248,17 @@ plt.ylim(-5,5)
 
 
 plt.figure(2)
+av = 0
+av1 = 0
+for i in range(len(list_parameters[1])):
+    av += list_parameters[1][i]
+    av1 += list_parameters[2][i]
+av /= len(list_parameters[1])
+av1 /= len(list_parameters[1])
+print("alpha",av)
+print("m_xi",av1)
+
+
 plt.plot(t_array,list_parameters[0], label=r'$\Phi$')
 plt.plot(t_array,list_parameters[1], label=r'$\alpha$')
 plt.plot(t_array,list_parameters[2], label=r'$m_\xi$')
