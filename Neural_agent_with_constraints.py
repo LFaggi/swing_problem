@@ -41,6 +41,8 @@ class NeuralAgent:
 
         self.history = [self.xi_list,self.omega_list,self.p_xi_list,self.p_omega_list,self.h_list]
 
+        self.threshold2 = 0.5
+
     def update_history(self):
         self.xi_list.append(copy.deepcopy(self.xi))
         self.omega_list.append(copy.deepcopy(self.omega.reshape(self.n_neurons**2)))
@@ -111,10 +113,22 @@ class NeuralAgent:
             self.xi[i] = xi[i] + delta_t * alpha[i] * (-xi[i] + self.activation_fun(activations[i]))
             if not self.is_symmetric:
                 for j in range(self.n_neurons):
-                    self.omega[i,j] = omega[i,j] - delta_t * p_omega[i,j] / (m_v[i,j] * dissipation_factor+0.1) # TODO da /aggiungere 0.1 a denominatore
+                    # self.omega[i,j] = omega[i,j] - delta_t * p_omega[i,j] / (m_v[i,j] * dissipation_factor)
+                    #Tentativo originale
+                    self.omega[i,j] = omega[i,j] - delta_t * p_omega[i,j] / (m_v[i,j] * dissipation_factor+self.threshold2) # TODO da togliere/aggiungere self.threshold2 a denominatore
+
+                    # if dissipation_factor > self.threshold2 or dissipation_factor < -self.threshold2:
+                    #     self.omega[i, j] = omega[i, j] - delta_t * p_omega[i, j] / (
+                    #                 m_v[i, j] * dissipation_factor)
+                    # elif dissipation_factor > 0 :
+                    #     self.omega[i, j] = omega[i, j] - delta_t * p_omega[i, j] / (
+                    #                 m_v[i, j] * self.threshold2)
+                    # elif dissipation_factor < 0:
+                    #     self.omega[i, j] = omega[i, j] - delta_t * p_omega[i, j] / (
+                    #             m_v[i, j] * -1*self.threshold2)
             else:
                 for j in range(i+1, self.n_neurons):
-                    self.omega[i,j] = omega[i,j] - delta_t * p_omega[i,j] / (m_v[i,j] * dissipation_factor+0.1)
+                    self.omega[i,j] = omega[i,j] - delta_t * p_omega[i,j] / (m_v[i,j] * dissipation_factor+self.threshold2)
                     self.omega[j,i] = self.omega[i,j]
 
         # costate update
@@ -180,9 +194,17 @@ class NeuralAgent:
             temp1 += 0.5 * m_xi[i] * (-self.xi[i]+self.activation_fun(activations[i]))**2
             temp2 += self.p_xi[i] * alpha[i] * (-self.xi[i]+self.activation_fun(activations[i]))
             for j in range(self.n_neurons):
-                temp3 += 0.5 * self.p_omega[i,j] / (dissipation_factor * m_v[i,j])
+                temp3 += 0.5 * self.p_omega[i,j] / (dissipation_factor * m_v[i,j]+self.threshold2)
 
         self.h = dissipation_factor * (self.potential(self.xi, self.input) + temp1) + temp2 - temp3
+
+    def evaluate_norm_p(self):
+        temp = 0
+        for i in range(self.n_neurons):
+            temp += self.p_xi[i] * self.p_xi[i]
+            for j in range(self.n_neurons):
+                temp += self.p_omega[i, j] * self.p_omega[i, j]
+        return np.sqrt(temp)
 
 
 class EnviromentalAgent:
@@ -193,7 +215,7 @@ class EnviromentalAgent:
         self.dissipation_factor = 0.1
         self.alpha = 0. * np.ones(self.n_neurons)
         self.theta = 0.1 * np.random.rand(self.n_neurons, self.n_neurons)
-        self.slack = 10   # TODO ancora da implementare
+        self.slack = 10   # TODO ancora da implementare ma non dovrebbe servire (no transizioni tra "regimi diversi")
         self.m_v = np.ones((self.n_neurons, self.n_neurons))
         self.m_xi = 1 * np.ones(self.n_neurons) # 0.1
         self.theta[0, -1] = 0
@@ -202,6 +224,7 @@ class EnviromentalAgent:
         self.eta_in = 1e-04     # This is a default value
         self.eta_out = 1e-02    # This is a default value
         self.threshold = 1
+        self.epsilon = 0.01     # This is a default value
 
         if self.is_symmetric:
             self.theta = (self.theta + self.theta.T) * 0.5
@@ -397,13 +420,13 @@ class EnviromentalAgent:
         #                       se è fuori calcolo grad g e faccio update lungo tangente
         #                             se è dentro ok
         #                             se è fuori abbasso lr
-        epsilon = 0
+        epsilon = self.epsilon
         max_it = 5
         it = 0
         eta_in = self.eta_in
         eta_out = self.eta_out
 
-        gamma = 1
+        gamma = 2
         # print(self.env_parameters)
         env_parameters = copy.deepcopy(self.env_parameters)
         env_parameters_new = copy.deepcopy(env_parameters)
@@ -412,7 +435,7 @@ class EnviromentalAgent:
         print("a", a)
         if a < -epsilon: # I am in the feasible region
             env_parameters_new[0] = env_parameters[0] - eta_in * self.grad_env_potential("dissipation_factor")
-            for i in range(self.n_neurons): # TODO sta qui il problema modificare la loss rispetto alpha
+            for i in range(self.n_neurons): # TODO stava qui il problema modificare la loss rispetto alpha - risolto con soglia al denominatore
                 env_parameters_new[1][i] = env_parameters[1][i] - eta_in * self.grad_env_potential("alpha",idx1=i)
                 for j in range(self.n_neurons):
                     env_parameters_new[2][i,j] = env_parameters[2][i,j] - eta_in * self.grad_env_potential("theta", idx1=i, idx2=j)
@@ -429,9 +452,9 @@ class EnviromentalAgent:
                     norm_factor = self.gradUscalargradG(agent)/self.gradG2(agent)
                     env_parameters_new[0] = env_parameters[0] - eta_in * (self.grad_env_potential("dissipation_factor") - gamma * norm_factor * self.grad_constraint("dissipation_factor",agent))
                     for i in range(self.n_neurons):
-                        env_parameters_new[1][i] = env_parameters[1][i] - eta_in * (self.grad_env_potential("alpha", idx1=i)- gamma * norm_factor * self.grad_constraint("alpha",agent, idx1=i))
+                        env_parameters_new[1][i] = env_parameters[1][i] - eta_in * (self.grad_env_potential("alpha", idx1=i) - gamma * norm_factor * self.grad_constraint("alpha",agent, idx1=i))
                         for j in range(self.n_neurons):
-                            env_parameters_new[2][i, j] = env_parameters[2][i, j] - eta_in * (self.grad_env_potential("theta", idx1=i, idx2=j)- gamma * norm_factor * self.grad_constraint("alpha",agent, idx1=i, idx2=j))
+                            env_parameters_new[2][i, j] = env_parameters[2][i, j] - eta_in * (self.grad_env_potential("theta", idx1=i, idx2=j) - gamma * norm_factor * self.grad_constraint("alpha",agent, idx1=i, idx2=j))
 
                 c = self.check_feasible(agent, env_parameters_new)
                 print("c:", c)
@@ -491,7 +514,7 @@ if __name__ == "__main__":
     network_is_symmetric = False
 
     def input_fun(t):
-        return 0.5 + 0.1 * np.sin(t)
+        return 0.1 + 0.1 * np.sin(t)
 
     signal_list = []
 
@@ -501,8 +524,9 @@ if __name__ == "__main__":
     env_agent = EnviromentalAgent(number_of_neurons, network_is_symmetric)
     # env_agent.eta_in = 0.0001
     # env_agent.eta_out = 0.001
-    env_agent.eta_in = 0.001
-    env_agent.eta_out = 0.001
+    env_agent.eta_in = 0.0001
+    env_agent.eta_out = 0.000001
+    env_agent.epsilon = 1.
     env_agent.update_history()
 
     # set costate initialization to start from the feasible region of the constraint
@@ -513,18 +537,37 @@ if __name__ == "__main__":
         agent.p_xi *=-1
         agent.p_omega *= -1
 
+    a = env_agent.check_feasible(agent, env_agent.env_parameters)
+    if a > -env_agent.epsilon:
+        agent.p_xi *= 1000
+        agent.p_omega *= 1000
+
+    a = env_agent.check_feasible(agent, env_agent.env_parameters)
+    if a > -env_agent.epsilon:
+        print("Try again...")
+        exit()
+
+    print("Initial constraint value: ", a)
+
     for t in t_array:
-        print("t:> ", t ,"-------------------")
+        print("t:> ", t ,"---------------------------------------------------------")
         input = input_fun(t)
         signal_list.append(input)
         agent.set_input(input)
 
         env_agent.update_env_parameters(agent)      # Comment this line when debugging the neural agent
 
+        # threshold2 = 0.01
+        # if env_agent.dissipation_factor > 0 and env_agent.dissipation_factor < threshold2:
+        #     env_agent.dissipation_factor = threshold2
+        # elif env_agent.dissipation_factor < 0 and env_agent.dissipation_factor > -threshold2:
+        #     env_agent.dissipation_factor = -threshold2
+
         if t != t_array[-1]:
             env_agent.update_history()
         agent.read_env_parameters(env_agent.env_parameters)
         agent.update_states_costates()
+        print("Costate norm: ",agent.evaluate_norm_p())
         agent.evaluate_current_hamiltonian()
         agent.update_history()
 
@@ -542,7 +585,7 @@ if __name__ == "__main__":
     plt.plot(t_array, np.zeros(len(t_array)),color="black", linestyle="--")
 
     plt.plot(t_array,signal_list, label=r'$Input$', color="cyan")
-    # plt.ylim(-2,2)
+    plt.ylim(-10,10)
 
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
@@ -552,16 +595,31 @@ if __name__ == "__main__":
     plt.figure(1)
     plt.title("Hamiltonian")
     plt.plot(t_array,agent.history[4], label=r'$Hamiltonian$', color="orange")
-    # plt.ylim(-10, 10)
+    plt.ylim(-10, 10)
 
 
     plt.figure(2)
 
+    # b = list(zip(*env_agent.history[2]))
+
     plt.plot(t_array,env_agent.history[0], label=r'$\Phi$',color="blue")
     plt.plot(t_array,env_agent.history[1], label=r'$\alpha_{i}$',color="red")
     plt.plot(t_array,env_agent.history[2], label=r'$\theta_{ij}$',color="green")
+    # for i in range(5):
+    #     plt.plot(t_array, b[i], label=r'$\theta_{ij}$', color="green")
+    # for i in range(5):
+    #     plt.plot(t_array, b[i+5], label=r'$\theta_{ij}$', color="cyan")
+    # for i in range(5):
+    #     plt.plot(t_array, b[i + 10], label=r'$\theta_{ij}$', color="purple")
+    # for i in range(5):
+    #     plt.plot(t_array, b[i+15], label=r'$\theta_{ij}$', color="black")
+    # for i in range(5):
+    #     plt.plot(t_array, b[i+20], label=r'$\theta_{ij}$', color="grey")
 
-    # plt.ylim(-5, 5)
+
+    plt.plot(t_array, np.zeros(len(t_array)),color="black", linestyle="--")
+
+    plt.ylim(-5, 5)
 
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
