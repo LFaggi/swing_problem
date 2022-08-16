@@ -177,6 +177,7 @@ class EnviromentalAgent:
 
         self.eta_in = 1e-04     # This is a default value
         self.eta_out = 1e-02    # This is a default value
+        self.max_it = 5         # This is a default value
         self.threshold = 0.1    # alpha = 0 in the initialization, the gradient in that direction blow up without this threshold!
         self.epsilon = 0.01     # This is a default value
 
@@ -338,7 +339,7 @@ class EnviromentalAgent:
         #                             se è dentro ok
         #                             se è fuori abbasso lr
         epsilon = self.epsilon
-        max_it = 10
+        max_it = self.max_it
         it = 0
         eta_in = self.eta_in
         eta_out = self.eta_out
@@ -401,7 +402,7 @@ class EnviromentalAgent:
         #                 break
         if a > -epsilon:        # I am out the feasibile region!
             while True:
-                print(self.env_parameters[2])
+                # print(self.env_parameters[2])
                 env_parameters = copy.deepcopy(self.env_parameters)
                 for i in range(self.n_neurons):
                     for j in range(self.n_neurons):
@@ -411,12 +412,15 @@ class EnviromentalAgent:
                                                                                                                idx1=i,
                                                                                                                idx2=j)
                 b = self.check_feasible(agent, self.env_parameters)
-                print(self.env_parameters[2])
+                # print(self.env_parameters[2])
                 print("b", b)
                 if b < -epsilon:
                     break
                 else:
                     it += 1
+                    if it % 100 == 0:
+                        eta_out *= 100
+                        print("eta_out: ", eta_out)
                     if it == max_it:
                         break
 
@@ -470,9 +474,10 @@ if __name__ == "__main__":
     env_agent = EnviromentalAgent()
     # env_agent.eta_in = 0.0001
     # env_agent.eta_out = 0.001
-    env_agent.eta_in = 0.0001
-    env_agent.eta_out = 0.001
-    env_agent.epsilon = 0.1
+    env_agent.eta_in = 0.0
+    env_agent.eta_out = 100
+    env_agent.max_it = 100
+    env_agent.epsilon = 0.001
     env_agent.update_history()
 
     # set costate initialization to start from the feasible region of the constraint
