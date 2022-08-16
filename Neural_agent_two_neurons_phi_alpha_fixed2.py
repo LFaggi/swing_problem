@@ -338,7 +338,7 @@ class EnviromentalAgent:
         #                             se è dentro ok
         #                             se è fuori abbasso lr
         epsilon = self.epsilon
-        max_it = 5
+        max_it = 10
         it = 0
         eta_in = self.eta_in
         eta_out = self.eta_out
@@ -401,28 +401,48 @@ class EnviromentalAgent:
         #                 break
         if a > -epsilon:        # I am out the feasibile region!
             while True:
-                env_parameters_new[0] = env_parameters[0]
-
+                print(self.env_parameters[2])
+                env_parameters = copy.deepcopy(self.env_parameters)
                 for i in range(self.n_neurons):
-                    env_parameters_new[1][i] = env_parameters[1][i]
                     for j in range(self.n_neurons):
-                        env_parameters_new[2][i, j] = env_parameters[2][i, j] - eta_in * (self.grad_env_potential("theta", idx1=i, idx2=j)) - eta_out * self.grad_constraint("theta",agent,idx1=i,idx2=j)
-                b = self.check_feasible(agent, env_parameters_new)
+                        self.env_parameters[2][i, j] = env_parameters[2][i, j] - eta_in * (
+                            self.grad_env_potential("theta", idx1=i, idx2=j)) - eta_out * self.grad_constraint("theta",
+                                                                                                               agent,
+                                                                                                               idx1=i,
+                                                                                                               idx2=j)
+                b = self.check_feasible(agent, self.env_parameters)
+                print(self.env_parameters[2])
                 print("b", b)
                 if b < -epsilon:
-                    # self.env_parameters = copy.deepcopy(env_parameters_new)
-                    for i in range(len(self.env_parameters)):
-                        self.env_parameters[i] = env_parameters_new[i]
                     break
                 else:
-                    eta_in *= 5
-                    eta_out *= 5
                     it += 1
                     if it == max_it:
-                        # self.env_parameters = copy.deepcopy(env_parameters_new)
-                        for i in range(len(self.env_parameters)):
-                            self.env_parameters[i] = env_parameters_new[i]
                         break
+
+                ## First version
+                # env_parameters_new[0] = env_parameters[0]
+                # for i in range(self.n_neurons):
+                #     env_parameters_new[1][i] = env_parameters[1][i]
+                #     for j in range(self.n_neurons):
+                #         env_parameters_new[2][i, j] = env_parameters[2][i, j] - eta_in * (self.grad_env_potential("theta", idx1=i, idx2=j)) - eta_out * self.grad_constraint("theta",agent,idx1=i,idx2=j)
+                # print(env_parameters_new[2])
+                # b = self.check_feasible(agent, env_parameters_new)
+                # print("b", b)
+                # if b < -epsilon:
+                #     # self.env_parameters = copy.deepcopy(env_parameters_new)
+                #     for i in range(len(self.env_parameters)):
+                #         self.env_parameters[i] = env_parameters_new[i]
+                #     break
+                # else:
+                #     eta_in *= 5
+                #     eta_out *= 5
+                #     it += 1
+                #     if it == max_it:
+                #         # self.env_parameters = copy.deepcopy(env_parameters_new)
+                #         for i in range(len(self.env_parameters)):
+                #             self.env_parameters[i] = env_parameters_new[i]
+                #         break
 
         # print(self.env_parameters)
         self.dissipation_factor = self.env_parameters[0]
@@ -451,7 +471,7 @@ if __name__ == "__main__":
     # env_agent.eta_in = 0.0001
     # env_agent.eta_out = 0.001
     env_agent.eta_in = 0.0001
-    env_agent.eta_out = 0.00001
+    env_agent.eta_out = 0.001
     env_agent.epsilon = 0.1
     env_agent.update_history()
 

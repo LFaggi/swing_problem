@@ -23,7 +23,7 @@ class NeuralAgent:
 
         self.history = [self.xi_list,self.omega_list,self.p_xi_list,self.p_omega_list,self.h_list]
 
-        self.threshold2 = 0.
+        self.threshold2 = 0.2
 
     def update_history(self):
         self.xi_list.append(copy.deepcopy(self.xi))
@@ -90,7 +90,7 @@ class NeuralAgent:
             self.xi[i] = xi[i] + delta_t * alpha[i] * (-xi[i] + self.activation_fun(activations[i]))
 
             for j in range(self.n_neurons):
-                self.omega[i,j] = omega[i,j] - delta_t * p_omega[i,j] / (m_v[i,j] * np.exp(dissipation_factor)+0.1) # default threshold is 0
+                self.omega[i,j] = omega[i,j] - delta_t * p_omega[i,j] / (m_v[i,j] * np.exp(dissipation_factor) + self.threshold2 ) # default threshold is 0
 
                 # if dissipation_factor > self.threshold2 or dissipation_factor < -self.threshold2:
                 #     self.omega[i, j] = omega[i, j] - delta_t * p_omega[i, j] / (
@@ -456,7 +456,7 @@ if __name__ == "__main__":
     # env_agent.eta_in = 0.0001
     # env_agent.eta_out = 0.001
     env_agent.eta_in = 0.0001
-    env_agent.eta_out = 0.01
+    env_agent.eta_out = 0.0000001
     env_agent.epsilon = 0.01
     env_agent.update_history()
 
