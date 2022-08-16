@@ -491,6 +491,10 @@ if __name__ == "__main__":
         agent.evaluate_current_hamiltonian()
         agent.update_history()
 
+    ThetaTimesOmega = []
+    for i in range(len(t_array)):
+        ThetaTimesOmega.append(agent.history[1][i]*env_agent.history[2][i])
+
     a = list(zip(*agent.history[0]))
 
     plt.figure(0)
@@ -498,6 +502,7 @@ if __name__ == "__main__":
     plt.plot(t_array, a[1], label=r'$\xi_1$', color="red")
 
     plt.plot(t_array, agent.history[1], label=r'$\omega$', color="orange")
+    plt.plot(t_array, ThetaTimesOmega, label=r'$\theta \cdot \omega$', color="yellow")
     plt.plot(t_array, agent.history[2], label=r'$p_\xi$', color="blue", linestyle="-.")
     plt.plot(t_array, agent.history[3], label=r'$p_\omega$', color="orange", linestyle="-.")
     plt.plot(t_array, np.zeros(len(t_array)),color="black", linestyle="--")

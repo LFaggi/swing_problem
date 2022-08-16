@@ -350,56 +350,8 @@ class EnviromentalAgent:
         env_parameters = copy.deepcopy(self.env_parameters)
         env_parameters_new = copy.deepcopy(env_parameters)
         a = self.check_feasible(agent, env_parameters)
-
         print("a", a)
-        # if a < -epsilon: # I am in the feasible region
-        #     env_parameters_new[0] = env_parameters[0]
-        #
-        #     # if env_parameters_new[0] > constraint or env_parameters_new[0] < -constraint:
-        #     #     env_parameters_new[0] = env_parameters_new[0]
-        #     # elif env_parameters_new[0] > 0 :
-        #     #     env_parameters_new[0] = constraint
-        #     # elif env_parameters_new[0] < 0:
-        #     #     env_parameters_new[0] = -1 * constraint
-        #
-        #
-        #     for i in range(self.n_neurons): # TODO stava qui il problema modificare la loss rispetto alpha - risolto con soglia al denominatore
-        #         env_parameters_new[1][i] = env_parameters[1][i]
-        #         for j in range(self.n_neurons):
-        #             env_parameters_new[2][i,j] = env_parameters[2][i,j] - eta_in * self.grad_env_potential("theta", idx1=i, idx2=j)
-        #
-        #     b = self.check_feasible(agent, env_parameters_new)
-        #     print("b", b)
-        #     while True:
-        #         if b < -epsilon:
-        #             # self.env_parameters = copy.deepcopy(env_parameters_new)
-        #             for i in range(len(self.env_parameters)):
-        #                 self.env_parameters[i] = env_parameters_new[i]
-        #             break
-        #         else:
-        #             norm_factor = self.gradUscalargradG(agent)/self.gradG2(agent)
-        #             env_parameters_new[0] = env_parameters[0] - eta_in * (self.grad_env_potential("dissipation_factor") - gamma * norm_factor * self.grad_constraint("dissipation_factor",agent))
-        #             for i in range(self.n_neurons):
-        #                 env_parameters_new[1][i] = env_parameters[1][i] - eta_in * (self.grad_env_potential("alpha", idx1=i) - gamma * norm_factor * self.grad_constraint("alpha",agent, idx1=i))
-        #                 for j in range(self.n_neurons):
-        #                     env_parameters_new[2][i, j] = env_parameters[2][i, j] - eta_in * (self.grad_env_potential("theta", idx1=i, idx2=j) - gamma * norm_factor * self.grad_constraint("alpha",agent, idx1=i, idx2=j))
-        #
-        #         c = self.check_feasible(agent, env_parameters_new)
-        #         print("c:", c)
-        #         if c < -epsilon:
-        #             # self.env_parameters = copy.deepcopy(env_parameters_new)
-        #             for i in range(len(self.env_parameters)):
-        #                 self.env_parameters[i] = env_parameters_new[i]
-        #             break
-        #         else:
-        #             print("Lr is too high along the tangential direction!")
-        #             eta_in /=2
-        #             it += 1
-        #             if it == max_it:
-        #                 # self.env_parameters = copy.deepcopy(env_parameters_new)
-        #                 for i in range(len(self.env_parameters)):
-        #                     self.env_parameters[i] = env_parameters_new[i]
-        #                 break
+
         if a > -epsilon:        # I am out the feasibile region!
             while True:
                 # print(self.env_parameters[2])
@@ -419,34 +371,11 @@ class EnviromentalAgent:
                 else:
                     it += 1
                     if it % 100 == 0:
-                        eta_out *= 100
+                        eta_out *= 2
                         print("eta_out: ", eta_out)
                     if it == max_it:
                         break
 
-                ## First version
-                # env_parameters_new[0] = env_parameters[0]
-                # for i in range(self.n_neurons):
-                #     env_parameters_new[1][i] = env_parameters[1][i]
-                #     for j in range(self.n_neurons):
-                #         env_parameters_new[2][i, j] = env_parameters[2][i, j] - eta_in * (self.grad_env_potential("theta", idx1=i, idx2=j)) - eta_out * self.grad_constraint("theta",agent,idx1=i,idx2=j)
-                # print(env_parameters_new[2])
-                # b = self.check_feasible(agent, env_parameters_new)
-                # print("b", b)
-                # if b < -epsilon:
-                #     # self.env_parameters = copy.deepcopy(env_parameters_new)
-                #     for i in range(len(self.env_parameters)):
-                #         self.env_parameters[i] = env_parameters_new[i]
-                #     break
-                # else:
-                #     eta_in *= 5
-                #     eta_out *= 5
-                #     it += 1
-                #     if it == max_it:
-                #         # self.env_parameters = copy.deepcopy(env_parameters_new)
-                #         for i in range(len(self.env_parameters)):
-                #             self.env_parameters[i] = env_parameters_new[i]
-                #         break
 
         # print(self.env_parameters)
         self.dissipation_factor = self.env_parameters[0]
@@ -458,7 +387,7 @@ class EnviromentalAgent:
 
 if __name__ == "__main__":
     np.random.seed(3)
-    T = 15
+    T = 1
     delta_t = 0.01
 
     number_of_neurons = 2
@@ -474,31 +403,15 @@ if __name__ == "__main__":
     env_agent = EnviromentalAgent()
     # env_agent.eta_in = 0.0001
     # env_agent.eta_out = 0.001
-    env_agent.eta_in = 0.0
-    env_agent.eta_out = 100
-    env_agent.max_it = 100
+    env_agent.eta_in = 0.
+    env_agent.eta_out = 1
+    env_agent.max_it = 1000
     env_agent.epsilon = 0.001
     env_agent.update_history()
 
     # set costate initialization to start from the feasible region of the constraint
     agent.read_env_parameters(env_agent.env_parameters)
     agent.set_input(input_fun(0))
-    # a = env_agent.check_feasible(agent,env_agent.env_parameters)
-    # if a > 0:
-    #     agent.p_xi *=-1
-    #     agent.p_omega *= -1
-    #
-    # a = env_agent.check_feasible(agent, env_agent.env_parameters)
-    # if a > -env_agent.epsilon:
-    #     agent.p_xi *= 10
-    #     agent.p_omega *= 10
-    #
-    # a = env_agent.check_feasible(agent, env_agent.env_parameters)
-    # if a > -env_agent.epsilon:
-    #     print("Try again...")
-    #     exit()
-
-    # print("Initial constraint value: ", a)
 
     for t in t_array:
         print("t:> ", t ,"---------------------------------------------------------")
@@ -506,7 +419,7 @@ if __name__ == "__main__":
         signal_list.append(input)
         agent.set_input(input)
 
-        env_agent.update_env_parameters(agent)      # Comment this line when debugging the neural agent
+        env_agent.update_env_parameters(agent)
 
         if t != t_array[-1]:
             env_agent.update_history()
@@ -516,6 +429,10 @@ if __name__ == "__main__":
         agent.evaluate_current_hamiltonian()
         agent.update_history()
 
+    ThetaTimesOmega = []
+    for i in range(len(t_array)):
+        ThetaTimesOmega.append(agent.history[1][i]*env_agent.history[2][i])
+
     a = list(zip(*agent.history[0]))
 
     plt.figure(0)
@@ -523,6 +440,7 @@ if __name__ == "__main__":
     plt.plot(t_array, a[1], label=r'$\xi_1$', color="red")
 
     plt.plot(t_array, agent.history[1], label=r'$\omega$', color="orange")
+    plt.plot(t_array, ThetaTimesOmega, label=r'$\theta \cdot \omega$', color="yellow")
     plt.plot(t_array, agent.history[2], label=r'$p_\xi$', color="blue", linestyle="-.")
     plt.plot(t_array, agent.history[3], label=r'$p_\omega$', color="orange", linestyle="-.")
     plt.plot(t_array, np.zeros(len(t_array)),color="black", linestyle="--")
@@ -539,7 +457,6 @@ if __name__ == "__main__":
     plt.title("Hamiltonian")
     plt.plot(t_array,agent.history[4], label=r'$Hamiltonian$', color="orange")
     plt.ylim(-3, 3)
-
 
     plt.figure(2)
 
