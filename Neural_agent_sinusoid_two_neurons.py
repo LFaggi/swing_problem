@@ -20,8 +20,9 @@ class NeuralAgent:
         self.p_xi_list = []
         self.p_omega_list = []
         self.h_list =[]
+        self.p_norm_list = []
 
-        self.history = [self.xi_list,self.omega_list,self.p_xi_list,self.p_omega_list,self.h_list]
+        self.history = [self.xi_list,self.omega_list,self.p_xi_list,self.p_omega_list,self.h_list,self.p_norm_list]
 
         self.threshold2 = 0.
 
@@ -31,6 +32,7 @@ class NeuralAgent:
         self.p_xi_list.append(copy.deepcopy(self.p_xi))
         self.p_omega_list.append(copy.deepcopy(self.p_omega.reshape(self.n_neurons**2)))
         self.h_list.append(copy.deepcopy(self.h))
+        self.p_norm_list.append(copy.deepcopy(self.p_norm))
 
 
     def set_input(self,input):
@@ -169,7 +171,7 @@ class NeuralAgent:
             temp += self.p_xi[i] * self.p_xi[i]
             for j in range(self.n_neurons):
                 temp += self.p_omega[i, j] * self.p_omega[i, j]
-        return np.sqrt(temp)
+        self.p_norm = np.sqrt(temp)
 
 
 class EnviromentalAgent:
@@ -455,14 +457,16 @@ if __name__ == "__main__":
     env_agent = EnviromentalAgent()
     # env_agent.eta_in = 0.0001
     # env_agent.eta_out = 0.001
-    env_agent.eta_in = 0.0001
-    env_agent.eta_out = 0.0001
-    env_agent.epsilon = 0.
+    env_agent.eta_in = 0.001
+    env_agent.eta_out = 0.1
+    env_agent.epsilon = 0.0001
     env_agent.update_history()
 
     # set costate initialization to start from the feasible region of the constraint
     agent.read_env_parameters(env_agent.env_parameters)
     agent.set_input(input_fun(0))
+    # agent.xi[0] = 0
+    # agent.xi[1] = 0.2
     a = env_agent.check_feasible(agent,env_agent.env_parameters)
     if a > 0:
         agent.p_xi *=-1
@@ -475,7 +479,7 @@ if __name__ == "__main__":
 
     a = env_agent.check_feasible(agent, env_agent.env_parameters)
     if a > -env_agent.epsilon:
-        print("Try again...")
+        print("a: ",a , "Try again...")
         exit()
 
     print("Initial constraint value: ", a)
@@ -492,9 +496,14 @@ if __name__ == "__main__":
             env_agent.update_history()
         agent.read_env_parameters(env_agent.env_parameters)
         agent.update_states_costates()
-        print("Costate norm: ",agent.evaluate_norm_p())
+        agent.evaluate_norm_p()
         agent.evaluate_current_hamiltonian()
         agent.update_history()
+
+    # Plotting
+    ThetaTimesOmega = []
+    for i in range(len(t_array)):
+        ThetaTimesOmega.append(agent.history[1][i] * env_agent.history[2][i])
 
     a = list(zip(*agent.history[0]))
 
@@ -503,6 +512,7 @@ if __name__ == "__main__":
     plt.plot(t_array, a[1], label=r'$\xi_1$', color="red")
 
     plt.plot(t_array, agent.history[1], label=r'$\omega$', color="orange")
+    plt.plot(t_array, ThetaTimesOmega, label=r'$\theta \cdot \omega$', color="yellow")
     plt.plot(t_array, agent.history[2], label=r'$p_\xi$', color="blue", linestyle="-.")
     plt.plot(t_array, agent.history[3], label=r'$p_\omega$', color="orange", linestyle="-.")
     plt.plot(t_array, np.zeros(len(t_array)),color="black", linestyle="--")
@@ -534,6 +544,11 @@ if __name__ == "__main__":
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys())
+
+    plt.figure(3)
+    plt.title("Costates norm")
+    plt.plot(t_array,agent.history[5], label=r'$\| p \|$',color="red")
+    plt.ylim(-5, 5)
 
     plt.show()
 

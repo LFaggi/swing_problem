@@ -10,8 +10,8 @@ class NeuralAgent:
         self.xi = 0.1 * np.random.rand(self.n_neurons)
         self.omega = 0.1 * np.random.rand(self.n_neurons,self.n_neurons)
 
-        self.p_xi = .1 * np.random.rand(self.n_neurons)
-        self.p_omega = .1 * np.random.rand(self.n_neurons,self.n_neurons)
+        self.p_xi = 1. * np.random.rand(self.n_neurons)
+        self.p_omega = 1. * np.random.rand(self.n_neurons,self.n_neurons)
 
         self.agent_state = [self.xi, self.omega, self.p_xi, self.p_omega]
 
@@ -66,7 +66,7 @@ class NeuralAgent:
         self.m_xi = env_parameters[3]
         self.m_v = env_parameters[4]
 
-    def compute_activations(self):
+    def compute_activations(self):     # Riscrivere come prodotto matrice hadamard matrice * vettore
         activations = np.zeros(self.n_neurons)
         for i in range(self.n_neurons):
             for j in range(self.n_neurons):
@@ -88,7 +88,7 @@ class NeuralAgent:
         activations = self.compute_activations()
 
         # state update
-        for i in range(self.n_neurons):
+        for i in range(self.n_neurons):                            # invertire self e senza self per evitare la copia riga 83
             self.xi[i] = xi[i] + delta_t * alpha[i] * (-xi[i] + self.activation_fun(activations[i]))
 
             for j in range(self.n_neurons):
@@ -184,7 +184,7 @@ class EnviromentalAgent:
         self.threshold = 0.1    # alpha = 0 in the initialization, the gradient in that direction blow up without this threshold!
         self.epsilon = 0.01     # This is a default value
 
-        self.env_parameters = [self.dissipation_factor, self.alpha, self.theta, self.m_xi, self.m_v]
+        self.env_parameters = [self.dissipation_factor, self.alpha, self.theta, self.m_xi, self.m_v]      # TODO farlo condiviso con l'agente
 
         self.dissipation_factor_list = []
         self.alpha_list = []
@@ -209,14 +209,21 @@ class EnviromentalAgent:
         self.m_xi_list.append(copy.deepcopy(m_v.reshape(self.n_neurons ** 2)))
 
     def env_potential(self):
-        #when phi and alpha are fixed, the environmental loss includes only the term with theta
-        temp = 0
+        temp1 = 0
+        temp2 = 0
+        temp3 = 0
+        temp4 = 0
         for i in range(self.n_neurons):
+            temp1 += 1/(self.alpha[i]+self.threshold)**2
             for j in range(self.n_neurons):
-                temp += (self.theta[i, j]-1)**2
-        return 0.5 * temp
+                temp2 += (self.theta[i, j]-1)**2
+        return 0.5 * ((self.dissipation_factor - 1)**2 + temp1 + temp2 + temp3 + temp4)
 
-    def grad_env_potential(self, direction, idx1=None, idx2=None):
+    def grad_env_potential(self, direction, idx1=None, idx2=None):        # TODO fargli ritornare vettore di gradienti senza direction
+        if direction == "dissipation_factor":
+            return self.dissipation_factor - 1
+        if direction == "alpha":
+            return -(1 / (self.alpha[idx1] + self.threshold)**3)
         if direction == "theta":
             return self.theta[idx1, idx2]-1
 
@@ -226,19 +233,19 @@ class EnviromentalAgent:
         activations = agent.compute_activations()
 
         if name_constraint == "g_p_xi":
-            # if direction == "dissipation_factor":
-            #     temp1 = np.zeros(self.n_neurons)
-            #     for i in range(self.n_neurons):
-            #         temp1[idxc1] += self.m_xi[i] * (
-            #                     -agent.xi[i] + agent.activation_fun(activations[i])) * agent.activation_fun_prime(
-            #             activations[i]) * self.theta[i, idxc1] * agent.omega[i, idxc1]
-            #     return -(agent.potential_prime(agent.xi, agent.input, idxc1) - self.m_xi[idxc1] * (-agent.xi[idxc1] + agent.activation_fun(activations[idxc1])) + temp1[idxc1])
-            # if direction == "alpha":
-            #     temp = 0
-            #     if idxc1 == idx1:
-            #         temp += agent.p_xi[idxc1]
-            #     temp += -agent.p_xi[idx1] * agent.activation_fun_prime(activations[idx1]) * self.theta[idx1,idxc1] * agent.omega[idx1,idxc1]
-            #     return temp
+            if direction == "dissipation_factor":
+                temp1 = np.zeros(self.n_neurons)
+                for i in range(self.n_neurons):
+                    temp1[idxc1] += self.m_xi[i] * (
+                                -agent.xi[i] + agent.activation_fun(activations[i])) * agent.activation_fun_prime(
+                        activations[i]) * self.theta[i, idxc1] * agent.omega[i, idxc1]
+                return -(agent.potential_prime(agent.xi, agent.input, idxc1) - self.m_xi[idxc1] * (-agent.xi[idxc1] + agent.activation_fun(activations[idxc1])) + temp1[idxc1])
+            if direction == "alpha":
+                temp = 0
+                if idxc1 == idx1:
+                    temp += agent.p_xi[idxc1]
+                temp += -agent.p_xi[idx1] * agent.activation_fun_prime(activations[idx1]) * self.theta[idx1,idxc1] * agent.omega[idx1,idxc1]
+                return temp
             if direction == "theta":
                 temp = 0
                 if idxc1 == idx1:
@@ -253,12 +260,12 @@ class EnviromentalAgent:
                 return temp
 
         if name_constraint == "g_p_omega":
-            # if direction == "dissipation_factor":
-            #     return -(self.m_xi[idxc1] *(-agent.xi[idxc1]+agent.activation_fun(activations[idxc1])) * agent.activation_fun_prime(activations[idxc1]) * self.theta[idxc1,idxc2] * agent.xi[idxc2])
-            # if direction == "alpha":
-            #     if idxc1 == idx1:
-            #         return -agent.p_xi[idxc1] * agent.activation_fun_prime(activations[idxc1]) * self.theta[idxc1,idxc2] * agent.xi[idxc2]
-            #     else: return 0
+            if direction == "dissipation_factor":
+                return -(self.m_xi[idxc1] *(-agent.xi[idxc1]+agent.activation_fun(activations[idxc1])) * agent.activation_fun_prime(activations[idxc1]) * self.theta[idxc1,idxc2] * agent.xi[idxc2])
+            if direction == "alpha":
+                if idxc1 == idx1:
+                    return -agent.p_xi[idxc1] * agent.activation_fun_prime(activations[idxc1]) * self.theta[idxc1,idxc2] * agent.xi[idxc2]
+                else: return 0
             if direction == "theta":
                 temp = 0
                 if idxc1 == idx1:
@@ -274,18 +281,18 @@ class EnviromentalAgent:
 
     def grad_constraint(self, direction, agent, idx1 = None, idx2 = None):
         temp = 0
-        # if direction == "dissipation_factor":
-        #     for i in range(self.n_neurons):
-        #         temp += agent.p_xi[i] * self.grad_g("g_p_xi","dissipation_factor", agent, idxc1=i)
-        #     for i in range(self.n_neurons): # non distinguo caso simmetrico e non tanto p_omega è triangolare
-        #         for j in range(self.n_neurons):
-        #             temp += agent.p_omega[i,j] * self.grad_g("g_p_omega","dissipation_factor", agent, idxc1=i, idxc2=j)
-        # if direction == "alpha":
-        #     for i in range(self.n_neurons):
-        #         temp += agent.p_xi[i] * self.grad_g("g_p_xi", "alpha", agent, idxc1=i, idx1=idx1)
-        #     for i in range(self.n_neurons):
-        #         for j in range(self.n_neurons):
-        #             temp += agent.p_omega[i, j] * self.grad_g("g_p_omega", "alpha", agent, idxc1=i, idxc2=j, idx1=idx1)
+        if direction == "dissipation_factor":
+            for i in range(self.n_neurons):
+                temp += agent.p_xi[i] * self.grad_g("g_p_xi","dissipation_factor", agent, idxc1=i)
+            for i in range(self.n_neurons): # non distinguo caso simmetrico e non tanto p_omega è triangolare
+                for j in range(self.n_neurons):
+                    temp += agent.p_omega[i,j] * self.grad_g("g_p_omega","dissipation_factor", agent, idxc1=i, idxc2=j)
+        if direction == "alpha":
+            for i in range(self.n_neurons):
+                temp += agent.p_xi[i] * self.grad_g("g_p_xi", "alpha", agent, idxc1=i, idx1=idx1)
+            for i in range(self.n_neurons):
+                for j in range(self.n_neurons):
+                    temp += agent.p_omega[i, j] * self.grad_g("g_p_omega", "alpha", agent, idxc1=i, idxc2=j, idx1=idx1)
         if direction == "theta":
             for i in range(self.n_neurons):
                 temp += agent.p_xi[i] * self.grad_g("g_p_xi", "theta", agent, idxc1=i, idx1=idx1, idx2=idx2)
@@ -328,7 +335,19 @@ class EnviromentalAgent:
         return temp
 
     def update_env_parameters(self, agent):
-
+        #   Per ciascun costraint...
+        #   Controlliamo se siamo in F
+        #       - Se siamo fuori:
+        #                - calcoliamo grad g e facciamo update lungo direzione grad g del vincolo rotto
+        #                       se è dentro il vincolo rotto e sono sempre dentro gli altri ok
+        #                       se è fuori il vincolo rotto e sempre dentro gli altri alzo il lr
+        #                       se è dentro il vincolo rotto ma fuori da quelli che erano buoni? nisba -> non faccio l'update?
+        #       - 1b siamo dentro:
+        #                -calcoliamo grad U e facciamo update provvisorio lungo grad U
+        #                       se il punto risultante è dentro tutto ok
+        #                       se è fuori calcolo grad g e faccio update lungo tangente
+        #                             se è dentro ok
+        #                             se è fuori abbasso lr
         epsilon = self.epsilon
         max_it = self.max_it
         it = 0
@@ -345,13 +364,16 @@ class EnviromentalAgent:
             while True:
                 # print(self.env_parameters[2])
                 env_parameters = copy.deepcopy(self.env_parameters)
+
+                self.env_parameters[0] = env_parameters[0] - eta_in * self.grad_env_potential("dissipation_factor") - eta_out * self.grad_constraint("dissipation_factor",agent)
+                if self.env_parameters[0] < 0.1:      # Hard constraint
+                    self.env_parameters[0] = env_parameters[0]
                 for i in range(self.n_neurons):
+                    self.env_parameters[1][i] = env_parameters[1][i] - eta_in * self.grad_env_potential("alpha", idx1=i) - eta_out * self.grad_constraint("alpha", agent, idx1=i)
+                    if self.env_parameters[1][i] < 0.1:      # Hard constraint
+                        self.env_parameters[1][i] = env_parameters[1][i]
                     for j in range(self.n_neurons):
-                        self.env_parameters[2][i, j] = env_parameters[2][i, j] + eta_in * (
-                            self.grad_env_potential("theta", idx1=i, idx2=j)) + eta_out * self.grad_constraint("theta",
-                                                                                                               agent,
-                                                                                                               idx1=i,
-                                                                                                               idx2=j)
+                        self.env_parameters[2][i, j] = env_parameters[2][i, j] - eta_in * self.grad_env_potential("theta", idx1=i, idx2=j) - eta_out * self.grad_constraint("theta", agent, idx1=i, idx2=j)
                 b = self.check_feasible(agent, self.env_parameters)
                 # print(self.env_parameters[2])
                 print("b", b)
@@ -359,8 +381,8 @@ class EnviromentalAgent:
                     break
                 else:
                     it += 1
-                    if it % 10 == 0:
-                        eta_out *= 1
+                    if it % 50 == 0:
+                        eta_out *= 5
                         print("eta_out: ", eta_out)
                     if it == max_it:
                         break
@@ -376,7 +398,7 @@ class EnviromentalAgent:
 
 if __name__ == "__main__":
     np.random.seed(3)
-    T = 0.5
+    T = 10
     delta_t = 0.01
 
     number_of_neurons = 2
@@ -392,8 +414,9 @@ if __name__ == "__main__":
     env_agent = EnviromentalAgent()
     # env_agent.eta_in = 0.0001
     # env_agent.eta_out = 0.001
-    env_agent.eta_in = 0.0001
-    env_agent.eta_out = 0.0001
+    # env_agent.eta_in = 0.00001
+    env_agent.eta_in = 0.01
+    env_agent.eta_out = 10.
     env_agent.max_it = 200
     env_agent.epsilon = 0.001
 
@@ -427,7 +450,7 @@ if __name__ == "__main__":
         if t != t_array[-1]:
             agent.update_history()
 
-    # Plotting
+    # PLotting
     ThetaTimesOmega = []
     for i in range(len(t_array)):
         ThetaTimesOmega.append(agent.history[1][i]*env_agent.history[2][i])
