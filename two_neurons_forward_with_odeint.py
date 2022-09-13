@@ -1,17 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import copy
+import scipy.integrate
 np.set_printoptions(precision=10)
 
 class NeuralAgent:
     def __init__(self):
 
         self.n_neurons = 2
-        self.xi = 0.1 * np.random.rand(self.n_neurons)
-        self.omega = 0.1 * np.random.rand(self.n_neurons,self.n_neurons)
+        self.xi = np.array([0.5,1.])
+        self.omega = np.array([[0.5507979025745755, 0.7081478226181048], [0.2909047389129443, 0.510827605197663]])
 
-        self.p_xi = .1 * np.random.rand(self.n_neurons)
-        self.p_omega = .1 * np.random.rand(self.n_neurons,self.n_neurons)
+        self.p_xi = np.array([-0.352496578521608, -0.044991618497037325])
+        self.p_omega = np.array([[-0.0218882036703026, -0.03619190031163536], [-0.004876276476018469, -0.01111928939200455]])
 
         self.agent_state = [self.xi, self.omega, self.p_xi, self.p_omega]
 
@@ -22,9 +23,12 @@ class NeuralAgent:
         self.h_list =[]
         self.p_norm_list = []
 
-        self.history = [self.xi_list,self.omega_list,self.p_xi_list,self.p_omega_list,self.h_list,self.p_norm_list]
+        self.history = [self.xi_list, self.omega_list, self.p_xi_list, self.p_omega_list, self.h_list, self.p_norm_list]
 
         self.threshold2 = 0.
+
+        self.h = 0
+        self.p_norm = 0
 
     def update_history(self):
         self.xi_list.append(copy.deepcopy(self.xi))
@@ -73,35 +77,58 @@ class NeuralAgent:
                 activations[i] += self.theta[i, j] * self.omega[i, j] * self.xi[j]
         return activations
 
-    def update_states_costates(self):
-        # shortcut
+    def right_hand(self,t,y): # FOr scipy odeint
+        def input_fun(x):
+            return 1. * np.sin(x) + 0.5
+
         alpha = self.alpha
-        dissipation_factor = self.dissipation_factor
-        theta = self.theta
-        m_v = self.m_v
+        phi = self.dissipation_factor
+        theta = np.array([self.theta[0,0], self.theta[0,1], self.theta[1,0], self.theta[1,1]])
+        mv = self.m_v[0,0] #sono tutti uguali
 
-        xi = self.xi.copy()
-        omega = self.omega.copy()
-        p_xi = self.p_xi.copy()
-        p_omega = self.p_omega.copy()
+        a1 = theta[0] * y[2] * y[0] + theta[1] * y[3] * y[1]
+        a2 = theta[2] * y[4] * y[0] + theta[3] * y[5] * y[1]
 
-        activations = self.compute_activations()
+        activations = np.array([a1, a2])
 
-        # state update
-        for i in range(self.n_neurons):
-            self.xi[i] = xi[i] + delta_t * alpha[i] * (-xi[i] + self.activation_fun(activations[i]))
+        a = np.array([(alpha[0] * (-y[0] + self.activation_fun(a1)),
+                          alpha[1] * (-y[1] + self.activation_fun(a2)),
+                          -y[8] / (phi * mv),
+                          -y[9] / (phi * mv),
+                          -y[10] / (phi * mv),
+                          -y[11] / (phi * mv),
+                          -phi * (y[0] - input_fun(t)) + alpha[0] * y[6] - alpha[0] * y[6] * self.activation_fun_prime(a1) *
+                          theta[0] * y[2] - alpha[1] * y[7] * self.activation_fun_prime(a2) * theta[2] * y[4],
+                          alpha[1] * y[7] - alpha[0] * y[6] * self.activation_fun_prime(a1) * theta[1] * y[3] - alpha[1] * y[
+                              7] * self.activation_fun_prime(a2) * theta[3] * y[5],
+                          - alpha[0] * y[6] * self.activation_fun_prime(a1) * theta[0] * y[0],
+                          - alpha[0] * y[6] * self.activation_fun_prime(a1) * theta[1] * y[1],
+                          - alpha[1] * y[7] * self.activation_fun_prime(a2) * theta[2] * y[0],
+                          - alpha[1] * y[7] * self.activation_fun_prime(a2) * theta[3] * y[1])])
+        return np.squeeze(a)
 
-            for j in range(self.n_neurons):
-                self.omega[i,j] = omega[i,j] - delta_t * p_omega[i,j] / (m_v[i,j] * dissipation_factor+self.threshold2) # default threshold is 0
+    def update_states_costates(self,t,dt):
 
+        # y = [xi1, xi2, w11, w12, w21, w22, pxi1, pxi2, pw11, pw12, pw21, pw22]
+        #       0    1    2    3    4    5     6     7    8      9    10    11
 
-        # costate update
-        g_p_xi, g_p_omega = self.evaluate_costate_derivative(xi, omega, p_xi, p_omega, activations)
+        t_eval = np.linspace(t,t+dt,num=1000,endpoint=True)
 
-        for k in range(self.n_neurons):
-            self.p_xi[k] = p_xi[k] + delta_t * g_p_xi[k]
-            for n in range(self.n_neurons):
-                self.p_omega[k,n] = p_omega[k,n] + delta_t * g_p_omega[k,n]
+        y0 = np.array([self.xi[0], self.xi[1], self.omega[0,0], self.omega[0,1], self.omega[1,0], self.omega[1,1], self.p_xi[0], self.p_xi[1], self.p_omega[0,0], self.p_omega[0,1], self.p_omega[1,0], self.p_omega[1,1]])
+
+        sol = scipy.integrate.solve_ivp(self.right_hand, (t,t+dt), y0, t_eval = t_eval)
+        self.xi[0] = sol.y[0][-1]
+        self.xi[1] = sol.y[1][-1]
+        self.omega[0, 0] = sol.y[2][-1]
+        self.omega[0, 1] = sol.y[3][-1]
+        self.omega[1, 0] = sol.y[4][-1]
+        self.omega[1, 1] = sol.y[5][-1]
+        self.p_xi[0] = sol.y[6][-1]
+        self.p_xi[1] = sol.y[7][-1]
+        self.p_omega[0, 0] = sol.y[8][-1]
+        self.p_omega[0, 1] = sol.y[9][-1]
+        self.p_omega[1, 0] = sol.y[10][-1]
+        self.p_omega[1, 1] = sol.y[11][-1]
 
     def evaluate_costate_derivative(self,xi,omega,p_xi,p_omega,activations):
         g_p_xi = np.zeros(self.n_neurons)
@@ -171,10 +198,10 @@ class EnviromentalAgent:
         self.n_neurons = 2
 
         self.dissipation_factor = 1
-        self.alpha = 1 * np.ones(self.n_neurons) # the initialization of alpha is 0 when it is not fixed
-        self.theta = 0.1 * np.random.rand(self.n_neurons, self.n_neurons)
+        self.alpha = np.ones(self.n_neurons) # the initialization of alpha is 0 when it is not fixed
+        self.theta = np.ones((self.n_neurons,self.n_neurons)) # np.random.rand(self.n_neurons, self.n_neurons)
 
-        self.m_v = np.ones((self.n_neurons, self.n_neurons))
+        self.m_v = 0.01 * np.ones((self.n_neurons, self.n_neurons))
         self.m_xi = 0. * np.ones(self.n_neurons)
 
 
@@ -360,7 +387,7 @@ class EnviromentalAgent:
                 else:
                     it += 1
                     if it % 10 == 0:
-                        eta_out *= 1
+                        eta_out *= 2
                         print("eta_out: ", eta_out)
                     if it == max_it:
                         break
@@ -376,13 +403,13 @@ class EnviromentalAgent:
 
 if __name__ == "__main__":
     np.random.seed(3)
-    T = 0.5
-    delta_t = 0.01
+    T = 20
+    delta_t = 0.001
 
     number_of_neurons = 2
 
     def input_fun(t):
-        return 0.2 * np.sin(t)
+        return 1. * np.sin(t) + 0.5
 
     signal_list = []
 
@@ -395,7 +422,7 @@ if __name__ == "__main__":
     env_agent.eta_in = 0.0001
     env_agent.eta_out = 0.0001
     env_agent.max_it = 200
-    env_agent.epsilon = 0.001
+    env_agent.epsilon = 0.
 
     env_agent.update_history()
 
@@ -403,8 +430,8 @@ if __name__ == "__main__":
     agent.set_input(input_fun(0))
 
     # Initialization consistent with input
-    agent.xi[0] = 0
-    agent.xi[1] = 0.2
+    # agent.xi[0] = 0
+    # agent.xi[1] = 0.2
 
     agent.evaluate_norm_p()
     agent.evaluate_current_hamiltonian()
@@ -421,7 +448,7 @@ if __name__ == "__main__":
         if t != t_array[-1]:
             env_agent.update_history()
         agent.read_env_parameters(env_agent.env_parameters)
-        agent.update_states_costates()
+        agent.update_states_costates(t,delta_t)
         agent.evaluate_norm_p()
         agent.evaluate_current_hamiltonian()
         if t != t_array[-1]:
@@ -439,17 +466,18 @@ if __name__ == "__main__":
     plt.plot(t_array, a[1], label=r'$\xi_1$', color="red")
 
     plt.plot(t_array, agent.history[1], label=r'$\omega$', color="orange")
-    plt.plot(t_array, ThetaTimesOmega, label=r'$\theta \cdot \omega$', color="yellow")
+    # plt.plot(t_array, ThetaTimesOmega, label=r'$\theta \cdot \omega$', color="yellow")
     plt.plot(t_array, agent.history[2], label=r'$p_\xi$', color="blue", linestyle="-.")
     plt.plot(t_array, agent.history[3], label=r'$p_\omega$', color="orange", linestyle="-.")
     plt.plot(t_array, np.zeros(len(t_array)),color="black", linestyle="--")
 
     plt.plot(t_array,signal_list, label=r'$Input$', color="cyan")
-    plt.ylim(-1.5,1.5)
+    plt.ylim(-1.1,4.1)
 
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys())
+    plt.title("Soluzione forward")
 
 
     plt.figure(1)
