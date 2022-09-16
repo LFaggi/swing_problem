@@ -7,18 +7,20 @@ from scipy import signal
 
 n = 20000
 T = 250
+
+epochs = 10
 window_size = 5
 
 a = 1
 b = 1
 
 q = 1
-r = 0.001
+r = 0.1
 
 t_array = torch.linspace(0, T, n)
 dt = T / n
 
-threshold = 100
+threshold = 10
 
 
 def input_fun(t):     # Sinusoidal function
@@ -31,8 +33,9 @@ class NeuralModel(torch.nn.Module):
     def __init__(self):
         super(NeuralModel, self).__init__()
         self.hidden = 100
-        self.activation = torch.nn.ReLU()
-        self.activation = torch.nn.Tanh()
+        # self.activation = torch.nn.ReLU()
+        self.activation = torch.nn.LeakyReLU()
+        # self.activation = torch.nn.Tanh()
         self.linear_layer1 = torch.nn.Linear(2, self.hidden)
         self.linear_layer2 = torch.nn.Linear(self.hidden, self.hidden)
         self.linear_layer3 = torch.nn.Linear(self.hidden, self.hidden)
@@ -46,9 +49,9 @@ class NeuralModel(torch.nn.Module):
         x = self.activation(x)
         x = self.linear_layer2(x)
         x = self.activation(x)
-        x = self.linear_layer3(x)
-        x = self.activation(x)
         x = self.linear_layer4(x)
+        # x = self.activation(x)
+        # x = self.linear_layer4(x)
 
         # Original proposal
         # x = (self.theta * (x[:,0]-x[:,1]))
@@ -114,7 +117,8 @@ if __name__ == "__main__":
 
     model = NeuralModel()
     criterion = nn.MSELoss(reduction='sum')
-    optimizer = optim.SGD(model.parameters(), lr=0.001)
+    # optimizer = optim.SGD(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     weights_norm_array = torch.zeros(len(t_array))
 
@@ -123,7 +127,14 @@ if __name__ == "__main__":
 
     for t in range(len(t_array)-1):
 
-        backward_learning(xf[t], 0, t, model, window_size)
+        for epoch in range(epochs):
+            if epoch==0:
+                backward_learning(xf[t], 0, t, model, window_size)
+                # backward_learning(input_fun(torch.tensor(t*dt)), 0, t, model, window_size)     # proposto da Alesessandro
+            else:
+                x_0 = xf[t] * (torch.rand(1) + 0.5) # uniform sampling around xf[t]
+                # x_0 = xf[t] + 0.1 * torch.randn(1)    # gaussian sampling around xf[t]
+                backward_learning(x_0, 0, t, model, window_size)
 
         # Average Weights' L2 norm for debugging purposes
         total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -176,8 +187,6 @@ if __name__ == "__main__":
     # plt.plot(t_array, theta_for_plot, label="Theta", color="orange")
     # plt.ylim((-5,5))
     # plt.legend()
-
-    print(weights_norm_array.detach().numpy())
 
     plt.figure(1)
     plt.plot(t_array, weights_norm_array.detach().numpy(), label="Weights norm", color="orange")
