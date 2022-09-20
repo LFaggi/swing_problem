@@ -28,7 +28,7 @@ def input_fun(t):     # Sinusoidal function
 
 def mask(t):
     # return 1
-    return 0.5*(torch.sign(torch.sin(torch.tensor(2 * np.pi * 0.005 * t))) + 1)
+    return 0.5*(torch.sign(torch.sin(torch.tensor(2 * np.pi * 0.07 * t))) + 1)
 
 # def input_fun(t):       # Squared-wave function
 #     return torch.tensor(float(signal.square(2*np.pi*0.01*t)))
