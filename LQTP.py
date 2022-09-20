@@ -11,7 +11,7 @@ b = 1
 q = 1
 r = 0.1
 
-x_0 = 1
+x_0 = 0
 p_T = 0
 
 t = np.linspace(0, T, num=n, endpoint=True)
@@ -30,7 +30,7 @@ def fun(t, y):
 def bc(ya, yb):
     return np.array([ya[0]-x_0, yb[1]-p_T])
 
-sol = solve_bvp(fun, bc, t, y,tol=10**-20)
+sol = solve_bvp(fun, bc, t, y, verbose = 2)
 
 print("Initial costate value should be:", sol.sol(0)[1])
 
@@ -45,6 +45,7 @@ plt.axhline(y=0, color='black', linestyle='--')
 plt.xlabel("t")
 plt.xlim(0,T)
 plt.legend()
+plt.title("Optimal solution")
 
 plt.show()
 

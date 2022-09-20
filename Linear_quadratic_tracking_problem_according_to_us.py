@@ -3,19 +3,19 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
-from scipy import signal
+import scipy
 
 n = 20000
 T = 250
 
-epochs = 10
+epochs = 1
 window_size = 5
 
 a = 1
 b = 1
 
 q = 1
-r = 0.1
+r = 0.001
 
 t_array = torch.linspace(0, T, n)
 dt = T / n
@@ -25,6 +25,10 @@ threshold = 10
 
 def input_fun(t):     # Sinusoidal function
     return 5 * torch.sin(2 * np.pi * 0.01 * t)
+
+def mask(t):
+    # return 1
+    return 0.5*(torch.sign(torch.sin(torch.tensor(2 * np.pi * 0.005 * t))) + 1)
 
 # def input_fun(t):       # Squared-wave function
 #     return torch.tensor(float(signal.square(2*np.pi*0.01*t)))
@@ -49,9 +53,9 @@ class NeuralModel(torch.nn.Module):
         x = self.activation(x)
         x = self.linear_layer2(x)
         x = self.activation(x)
+        x = self.linear_layer3(x)
+        x = self.activation(x)
         x = self.linear_layer4(x)
-        # x = self.activation(x)
-        # x = self.linear_layer4(x)
 
         # Original proposal
         # x = (self.theta * (x[:,0]-x[:,1]))
@@ -60,9 +64,8 @@ class NeuralModel(torch.nn.Module):
 
 def forward_step(x, p, t_index, model):
     with torch.no_grad():
-        input = torch.tensor((x[t_index],input_fun(torch.tensor(t_index * dt)))).unsqueeze(0)
+        input = torch.tensor((x[t_index],mask(t_index * dt)*input_fun(torch.tensor(t_index * dt)))).unsqueeze(0)
         p[t_index] = model(input)
-
     # Forward step (Euler discretization) for the state
     x[t_index+1] = x[t_index] + dt * (a * x[t_index]-(b**2/r) * p[t_index])
 
@@ -79,10 +82,10 @@ def backward_learning(x0,p0,t_index,net, window):
     # create dataset of optimal solutions going backward
     for window_index in range(window-1):   # TODO da ricontrollare indici segnale input, ricontrollare segni membro destra
         x_train[window-window_index-2] = x_train[window-window_index-1] - dt * (a * x_train[window-window_index-1] - (b ** 2 / r) * p_train[window-window_index-1])
-        p_train[window - window_index - 2] = p_train[window - window_index-1] - dt * (-q * (x_train[window - window_index - 1] - input_fun(torch.tensor((t_index - window_index) * dt))) - a * p_train[window - window_index - 1])
+        p_train[window - window_index - 2] = p_train[window - window_index-1] - dt * (-q * (x_train[window - window_index - 1] - mask((t_index - window_index) * dt)*input_fun(torch.tensor((t_index - window_index) * dt))) - a * p_train[window - window_index - 1])
 
     for window_index in range(window):
-        signal_train[window-window_index-1] = input_fun(torch.tensor((t_index - window_index) * dt))
+        signal_train[window-window_index-1] = mask((t_index - window_index) * dt) * input_fun(torch.tensor((t_index - window_index) * dt))
 
     # Marco's conditions
     # for window_index in range(window-1):
@@ -110,15 +113,15 @@ def update_model(net, batch, labels):
 if __name__ == "__main__":
 
     # xf = torch.zeros(n)
-    xf = 1 * torch.ones(n)
+    xf = 0 * torch.ones(n)
     pf = 0.5 * torch.ones(n) # Indifferente, viene sovrascritto dalla stima del modello nel forward
 
     theta_for_plot = torch.ones(n)
 
     model = NeuralModel()
     criterion = nn.MSELoss(reduction='sum')
-    # optimizer = optim.SGD(model.parameters(), lr=0.001)
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.SGD(model.parameters(), lr=0.001)
+    # optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     weights_norm_array = torch.zeros(len(t_array))
 
@@ -132,8 +135,8 @@ if __name__ == "__main__":
                 backward_learning(xf[t], 0, t, model, window_size)
                 # backward_learning(input_fun(torch.tensor(t*dt)), 0, t, model, window_size)     # proposto da Alesessandro
             else:
-                x_0 = xf[t] * (torch.rand(1) + 0.5) # uniform sampling around xf[t]
-                # x_0 = xf[t] + 0.1 * torch.randn(1)    # gaussian sampling around xf[t]
+                # x_0 = xf[t] * (torch.rand(1) + 0.5) # uniform sampling around xf[t]
+                x_0 = xf[t] + 0.5 * torch.randn(1)    # gaussian sampling around xf[t]
                 backward_learning(x_0, 0, t, model, window_size)
 
         # Average Weights' L2 norm for debugging purposes
@@ -160,7 +163,7 @@ if __name__ == "__main__":
 
         # Last step:
         with torch.no_grad():
-            input = torch.tensor((xf[-1], input_fun(torch.tensor(T)))).unsqueeze(0)
+            input = torch.tensor((xf[-1], mask(T) * input_fun(torch.tensor(T)))).unsqueeze(0)
             pf[-1] = model(input)
 
         for par in model.parameters():
@@ -175,7 +178,7 @@ if __name__ == "__main__":
 
     signal_array = torch.zeros(len(t_array))
     for t_index in range(len(t_array)):
-        signal_array[t_index] = input_fun(torch.tensor(t_index * dt))
+        signal_array[t_index] = mask(t_index * dt) * input_fun(torch.tensor(t_index * dt))
 
     plt.plot(t_array, signal_array, label="Signal", color="cyan")
     plt.ylim((-10,10))
