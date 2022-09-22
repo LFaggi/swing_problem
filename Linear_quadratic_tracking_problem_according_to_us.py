@@ -80,9 +80,9 @@ def backward_learning(x0,p0,t_index,net, window):
     x_train[-1] = x0
 
     # create dataset of optimal solutions going backward
-    for window_index in range(window-1):   # TODO da ricontrollare indici segnale input, ricontrollare segni membro destra
+    for window_index in range(window-1):   # TODO da ricontrollare indici segnale input, ricontrollare segni membro destra  ---- messa la maschera anche sul q
         x_train[window-window_index-2] = x_train[window-window_index-1] - dt * (a * x_train[window-window_index-1] - (b ** 2 / r) * p_train[window-window_index-1])
-        p_train[window - window_index - 2] = p_train[window - window_index-1] - dt * (-q * (x_train[window - window_index - 1] - mask((t_index - window_index) * dt)*input_fun(torch.tensor((t_index - window_index) * dt))) - a * p_train[window - window_index - 1])
+        p_train[window - window_index - 2] = p_train[window - window_index-1] - dt * (-q * mask((t_index - window_index) * dt) * (x_train[window - window_index - 1] - mask((t_index - window_index) * dt)*input_fun(torch.tensor((t_index - window_index) * dt))) - a * p_train[window - window_index - 1])
 
     for window_index in range(window):
         signal_train[window-window_index-1] = mask((t_index - window_index) * dt) * input_fun(torch.tensor((t_index - window_index) * dt))
