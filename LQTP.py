@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import math
 from scipy.integrate import solve_bvp
 
-T = 250
+T = 100
 n = 20000
 
 a = 1
@@ -44,6 +44,7 @@ plt.plot(t_plot, sig_plot, label='Signal',color="cyan")
 plt.axhline(y=0, color='black', linestyle='--')
 plt.xlabel("t")
 plt.xlim(0,T)
+plt.ylim(-10,10)
 plt.legend()
 plt.title("Optimal solution")
 

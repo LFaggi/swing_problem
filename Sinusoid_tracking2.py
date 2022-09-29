@@ -6,11 +6,13 @@ import matplotlib.pyplot as plt
 
 # Tracking di segnale sinusoidale con predizione dei costati p_xi da rete neurale.
 # Fase backward di apprendimento della relazione stato/costato seguita da step forawrd.
+# Finestra in avanti al posto che all'indietro e più epoche.
 
 #Definition of the time horizon and temporal nodes
 n = 20000
 T = 250
 window_size = 5
+epochs = 5
 
 t_array = torch.linspace(0, T, n)
 dt = T / n
@@ -134,7 +136,7 @@ def forward_step(xi, omega, p_xi, p_omega, t_index, model):
     for i in range(n_neurons):
         xi[t_index+1][i] = xi[t_index][i] + dt * (alpha[i]*(-xi[t_index][i] + activation_fun(a[i])))
         for j in range(n_neurons):
-            omega[t_index + 1][i][j] = omega[t_index][i][j] + dt * (-p_omega[t_index][i][j]/(phi*m_omega[i][j])) # TODO Marco suggersice di cmbiare segno qui
+            omega[t_index + 1][i][j] = omega[t_index][i][j] + dt * (-p_omega[t_index][i][j]/(phi*m_omega[i][j]))
             p_omega[t_index + 1][i][j] = p_omega[t_index][i][j] + dt * (-phi * (m_xi[i] * (-xi[t_index][i] + activation_fun(a[i])) * activation_fun_prime(a[i]) * theta[i][j] * xi[t_index][j] ) - p_xi[t_index][i] * alpha[i] * activation_fun_prime(a[i]) * theta[i][j] * xi[t_index][j])
 
 
@@ -213,7 +215,7 @@ if __name__ == "__main__":
     omega_f = 0.1 * torch.rand(n, n_neurons, n_neurons)
     # omega_f[0] = torch.tensor(np.array([0.25330344, 0.63383847, 0.52898445, 0.85110745]).reshape(2,2))
 
-    p_omega_f = 0. * torch.rand(n, n_neurons, n_neurons)
+    p_omega_f = 1. * torch.rand(n, n_neurons, n_neurons)
 
     weights_norm_array = torch.zeros(len(t_array))
 
@@ -223,8 +225,10 @@ if __name__ == "__main__":
     optimizer = optim.SGD(model.parameters(), lr=0.0001)
 
     for t in range(len(t_array)-1):
-
-        backward_learning(xi_f[t], torch.zeros(n_neurons), omega_f[t], torch.zeros(n_neurons), t, model, window_size)
+        for epoch in range(epochs):
+            x_0 = torch.normal(xi_f[t], std=0.5)
+            w_0 = torch.normal(omega_f[t], std=0.5)
+            backward_learning(x_0, torch.zeros(n_neurons), w_0, torch.zeros(n_neurons), t+window_size, model, window_size)
 
         # Average Weights' L2 norm for debugging purposes
         total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -259,17 +263,18 @@ if __name__ == "__main__":
     # xi_f = torch.reshape(xi_f, (n_neurons, n))
     # pi_xi_f = torch.reshape(p_xi_f, (n_neurons, n))
 
-
-
     plt.figure(0)
 
     for i in range(n_neurons):
         if i == 0:
             plt.plot(t_array, xi_f[:, i], label=r'$\xi_0$', color='green')
             plt.plot(t_array, p_xi_f[:, i], label=r'$p_{\xi_0}$',color='red')
-        else:
+        elif i == 1:
             plt.plot(t_array, xi_f[:,i], color = "lime", label=r'$\xi_i$')
             plt.plot(t_array, p_xi_f[:,i], color = "orange", label=r'$p_{\xi_i}$')
+        else:
+            plt.plot(t_array, xi_f[:, i], color="lime")
+            plt.plot(t_array, p_xi_f[:, i], color="orange")
     plt.plot(t_array, input_fun(t_array).numpy(), label="Signal", color="cyan")
     plt.plot(t_array, np.zeros(len(t_array)),color="black", linestyle="--")
 
