@@ -5,21 +5,38 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_bvp
 
+import argparse
 
-T = 60
-dt = 0.01
+parser = argparse.ArgumentParser(description='MPC neural approach for the LQTP')
 
-window_mpc = 50          # in seconds
-window_training = 10     # in seconds
+parser.add_argument('--T', type=float, default=10.)
+parser.add_argument('--dt', type=float, default=0.01)
+parser.add_argument('--window_mpc', type=float, default=50)
+parser.add_argument('--window_training', type=float, default=10)
+parser.add_argument('--a', type=float, default=1.)
+parser.add_argument('--b', type=float, default=1.)
+parser.add_argument('--r', type=float, default=1.)
+parser.add_argument('--q', type=float, default=1.)
 
-a = 1
-b = 1
-r = 0.1
-q = 1
+args = parser.parse_args()
+
+
+
+T = args.T
+dt = args.dt
+
+window_mpc = args.window_mpc          # in seconds
+window_training = args.window_training       # in seconds
+
+a = args.a
+b = args.b
+r = args.r
+q = args.q
 
 
 def input_fun(t):
     return 5 * np.sin(2 * np.pi * 0.01 * t)
+
 
 class NeuralModel(torch.nn.Module):
     def __init__(self):
@@ -83,13 +100,14 @@ def MPC(x0, pT, window, t):
 
 
 def generate_dataset(x0, pT, t_ind, net, w_training, w_mpc):
-    x_train = np.zeros(w_training)
-    p_train = np.zeros(w_training)
-    signal_train = np.zeros(w_training)
+    n_point = int(w_training//dt)
+    x_train = np.zeros(n_point)
+    p_train = np.zeros(n_point)
+    signal_train = np.zeros(n_point)
     x_train[0] = x0
 
     # create the dataset through MPC
-    for i in range(w_training - 1):
+    for i in range(n_point - 1):
         x_train[i+1], p_train[i+1], signal_train[i+1] = MPC(x_train[i], pT, w_mpc, t_ind * dt)
 
     x_train = torch.from_numpy(x_train[1:])
@@ -126,10 +144,10 @@ if __name__ == "__main__":
     criterion = nn.MSELoss(reduction='sum')
     optimizer = optim.SGD(model.parameters(), lr=0.0001)
 
-    weights_norm_array = torch.zeros(len(t_array))
+    weights_norm_array = torch.zeros(len(t_array)-1)
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    for t_index in range(n-1):
+    for t_index in range(int(3*n//4)-1):
 
         # Average Weights' L2 norm
         for par in model.parameters():
@@ -143,16 +161,32 @@ if __name__ == "__main__":
 
         print(t_index, " out of ", n)
 
+    for t_index in range(int(3*n//4) - 1, n-1):
+
+        # Average Weights' L2 norm
+        for par in model.parameters():
+            if par.requires_grad:
+                weights_norm_array[t_index] += torch.sqrt(torch.sum(par ** 2))
+        weights_norm_array[t_index] /= total_params
+
+        # dataset = generate_dataset(xf[t_index], 0, t_index, model, window_training, window_mpc)
+        # update_model(model, dataset)
+        forward_step(xf, pf, t_index, model)
+
+        print(t_index, " out of ", n)
+
     plt.figure(0)
     plt.plot(t_array,xf, label="State",color="green")
     plt.plot(t_array, pf, label="Costate", color="red")
     plt.plot(t_array,input_fun(t_array), label="Signal", color="cyan")
     plt.ylim((-10,10))
     plt.legend()
+    plt.savefig("state_costate.pdf", dpi=500)
 
     plt.figure(1)
-    plt.plot(t_array, weights_norm_array.detach().numpy(), label="Weights norm", color="orange")
+    plt.plot(t_array[:-1], weights_norm_array.detach().numpy(), label="Weights norm", color="orange")
     plt.legend()
+    plt.savefig("weights_norm.pdf", dpi=500)
 
     plt.show()
 

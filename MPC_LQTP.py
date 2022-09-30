@@ -39,7 +39,7 @@ def MPC(x0, window, pT, t):
     xf = sol.sol(t_array)[0][1]
     pf = sol.sol(t_array)[1][1]
     if sol.status != 0:
-        print("Porca puttana!", sol.status)
+        print("MPC is not working!", sol.status)
     return xf, pf
 
 
