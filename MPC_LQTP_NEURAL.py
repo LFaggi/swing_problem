@@ -9,14 +9,15 @@ import argparse
 
 parser = argparse.ArgumentParser(description='MPC neural approach for the LQTP')
 
-parser.add_argument('--T', type=float, default=10.)
+parser.add_argument('--T', type=float, default=100.)
 parser.add_argument('--dt', type=float, default=0.01)
-parser.add_argument('--window_mpc', type=float, default=50)
-parser.add_argument('--window_training', type=float, default=10)
+parser.add_argument('--window_mpc', type=float, default=1)
+parser.add_argument('--window_training', type=float, default=0.5)
 parser.add_argument('--a', type=float, default=1.)
 parser.add_argument('--b', type=float, default=1.)
 parser.add_argument('--r', type=float, default=1.)
 parser.add_argument('--q', type=float, default=1.)
+
 
 args = parser.parse_args()
 
@@ -41,13 +42,12 @@ def input_fun(t):
 class NeuralModel(torch.nn.Module):
     def __init__(self):
         super(NeuralModel, self).__init__()
-        self.hidden = 100
+        self.hidden = 5
         # self.activation = torch.nn.ReLU()
         self.activation = torch.nn.Tanh()
         self.linear_layer1 = torch.nn.Linear(2, self.hidden)
         self.linear_layer2 = torch.nn.Linear(self.hidden, self.hidden)
-        self.linear_layer3 = torch.nn.Linear(self.hidden, self.hidden)
-        self.linear_layer4 = torch.nn.Linear(self.hidden, 1)
+        self.linear_layer3 = torch.nn.Linear(self.hidden, 1)
 
     def forward(self, x):
         x = self.linear_layer1(x)
@@ -55,8 +55,6 @@ class NeuralModel(torch.nn.Module):
         x = self.linear_layer2(x)
         x = self.activation(x)
         x = self.linear_layer3(x)
-        x = self.activation(x)
-        x = self.linear_layer4(x)
         return x
 
 
@@ -99,7 +97,7 @@ def MPC(x0, pT, window, t):
     return xf_next, pf_next, sig_next
 
 
-def generate_dataset(x0, pT, t_ind, net, w_training, w_mpc):
+def generate_dataset(x0, pT, t_ind, w_training, w_mpc):
     n_point = int(w_training//dt)
     x_train = np.zeros(n_point)
     p_train = np.zeros(n_point)
@@ -108,7 +106,7 @@ def generate_dataset(x0, pT, t_ind, net, w_training, w_mpc):
 
     # create the dataset through MPC
     for i in range(n_point - 1):
-        x_train[i+1], p_train[i+1], signal_train[i+1] = MPC(x_train[i], pT, w_mpc, t_ind * dt)
+        x_train[i+1], p_train[i+1], signal_train[i+1] = MPC(x_train[i], pT, w_mpc, (t_ind+i) * dt)
 
     x_train = torch.from_numpy(x_train[1:])
     p_train = torch.from_numpy(p_train[1:])
@@ -155,7 +153,7 @@ if __name__ == "__main__":
                 weights_norm_array[t_index] += torch.sqrt(torch.sum(par ** 2))
         weights_norm_array[t_index] /= total_params
 
-        dataset = generate_dataset(xf[t_index], 0, t_index, model, window_training, window_mpc)
+        dataset = generate_dataset(xf[t_index], 0, t_index, window_training, window_mpc)
         update_model(model, dataset)
         forward_step(xf, pf, t_index, model)
 
@@ -179,6 +177,7 @@ if __name__ == "__main__":
     plt.plot(t_array,xf, label="State",color="green")
     plt.plot(t_array, pf, label="Costate", color="red")
     plt.plot(t_array,input_fun(t_array), label="Signal", color="cyan")
+    plt.axhline(y=0, color='black', linestyle='--')
     plt.ylim((-10,10))
     plt.legend()
     plt.savefig("state_costate.pdf", dpi=500)

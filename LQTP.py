@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import math
 from scipy.integrate import solve_bvp
 
-T = 60
+T = 500
 n = 20000
 
 a = 1

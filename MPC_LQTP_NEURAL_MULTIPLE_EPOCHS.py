@@ -13,11 +13,13 @@ parser.add_argument('--T', type=float, default=100.)
 parser.add_argument('--dt', type=float, default=0.01)
 parser.add_argument('--window_dataset', type=float, default=5)
 parser.add_argument('--window_mpc', type=float, default=10)
-parser.add_argument('--epochs', type=int, default=10)
+parser.add_argument('--n_batches', type=int, default=10)
+parser.add_argument('--dim_batches', type=int, default=10)
 parser.add_argument('--a', type=float, default=1.)
 parser.add_argument('--b', type=float, default=1.)
 parser.add_argument('--r', type=float, default=1.)
 parser.add_argument('--q', type=float, default=1.)
+parser.add_argument('--threshold', type=float, default=0.2)
 
 args = parser.parse_args()
 
@@ -27,13 +29,18 @@ T = args.T   # in seconds
 dt = args.dt  # in seconds
 
 window_dataset = args.window_dataset          # in seconds
-window_mpc = args.window_mpc       # in seconds
-epochs = args.epochs
+window_mpc = args.window_mpc                  # in seconds
+
+n_batches = args.n_batches
+dim_batches = args.dim_batches
 
 a = args.a
 b = args.b
 r = args.r
 q = args.q
+
+threshold = args.threshold
+
 
 #----------------------------------------------- DEFINITION OF THE INPUT SIGNAL ---------------------------------------
 
@@ -170,6 +177,20 @@ def update_model(net, data):
 
 if __name__ == "__main__":
 
+    # WandB initialization
+    wandb.init(project="MPC_LQTP_NEURAL", entity="lfaggi")
+    wandb.config = {
+        "T": T,
+        "dt": dt,
+        "window_mpc": window_mpc,
+        "window_training": window_dataset,
+        "a": a,
+        "b": b,
+        "r": r,
+        "q": q
+    }
+
+
 
     n = int(T//dt)
     t_array = np.linspace(0, T, n)
@@ -184,13 +205,16 @@ if __name__ == "__main__":
     weights_norm_array = torch.zeros(len(t_array)-1)
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    for t_index in range(int(3*n//4)-1):
+    # Optional
+    wandb.watch(model)
 
+    for t_index in range(int(3*n//4)-1):
         # Average Weights' L2 norm
         for par in model.parameters():
             if par.requires_grad:
-                weights_norm_array[t_index] += torch.sqrt(torch.sum(par ** 2))
-        weights_norm_array[t_index] /= total_params
+                weights_norm_array[t_index] += torch.sum(par ** 2)
+            weights_norm_array[t_index] = torch.sqrt(weights_norm_array[t_index])
+            weights_norm_array[t_index] /= total_params
 
         train = True
         counter = 0
@@ -206,19 +230,21 @@ if __name__ == "__main__":
 
             displacement /= len(state_test)
 
-            if displacement < 0.2:
+            if displacement < threshold:
                 train = False
             else:
                 counter += 1
                 print(counter)
-                for i in range(epochs):
-                    indices = torch.randperm(dataset_train[0].shape[0] - 1)[:10]
+                for i in range(n_batches):
+                    indices = torch.randperm(dataset_train[0].shape[0] - 1)[:dim_batches]
                     tuple_train = (dataset_train[0][indices], dataset_train[1][indices])
                     update_model(model, tuple_train)
 
             print("Displacement", float(displacement))
 
         forward_step(xf, pf, t_index, model)
+        wandb.log({"State": xf[t_index], "Costate": pf[t_index], "Signal": input_fun(t_index * dt),
+                   "Weights norm": weights_norm_array[t_index]}, step=t_index)
         print(t_index, " out of ", n)
 
     for t_index in range(int(3*n//4) - 1, n-1):
@@ -226,10 +252,14 @@ if __name__ == "__main__":
         # Average Weights' L2 norm
         for par in model.parameters():
             if par.requires_grad:
-                weights_norm_array[t_index] += torch.sqrt(torch.sum(par ** 2))
+                weights_norm_array[t_index] += torch.sum(par ** 2)
+        weights_norm_array[t_index] = torch.sqrt(weights_norm_array[t_index])
         weights_norm_array[t_index] /= total_params
 
         forward_step(xf, pf, t_index, model)
+
+        wandb.log({"State": xf[t_index], "Costate": pf[t_index], "Signal": input_fun(t_index * dt),
+                   "Weights norm": weights_norm_array[t_index]}, step=t_index)
 
     #------------------------------------------------------------------------------------------------------------------
 
