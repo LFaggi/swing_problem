@@ -3,15 +3,15 @@ import matplotlib.pyplot as plt
 import math
 from scipy.integrate import solve_bvp
 
-T = 500
+T = 10
 n = 20000
 
 a = 1
 b = 1
 q = 1
-r = 0.1
+r = 0.2
 
-x_0 = 0
+x_0 = 0.1
 p_T = 0
 
 t = np.linspace(0, T, num=n, endpoint=True)

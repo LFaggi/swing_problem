@@ -9,17 +9,17 @@ import wandb
 
 parser = argparse.ArgumentParser(description='MPC neural approach for the LQTP')
 
-parser.add_argument('--T', type=float, default=100.)
+parser.add_argument('--T', type=float, default=300.)
 parser.add_argument('--dt', type=float, default=0.01)
-parser.add_argument('--window_dataset', type=float, default=5)
-parser.add_argument('--window_mpc', type=float, default=10)
+parser.add_argument('--window_dataset', type=float, default=0.5)
+parser.add_argument('--window_mpc', type=float, default=1)
 parser.add_argument('--n_batches', type=int, default=10)
 parser.add_argument('--dim_batches', type=int, default=10)
 parser.add_argument('--a', type=float, default=1.)
 parser.add_argument('--b', type=float, default=1.)
-parser.add_argument('--r', type=float, default=1.)
+parser.add_argument('--r', type=float, default=0.1)
 parser.add_argument('--q', type=float, default=1.)
-parser.add_argument('--threshold', type=float, default=0.2)
+parser.add_argument('--threshold', type=float, default=0.05)
 
 args = parser.parse_args()
 
@@ -56,13 +56,12 @@ def input_fun(t):
 class NeuralModel(torch.nn.Module):
     def __init__(self):
         super(NeuralModel, self).__init__()
-        self.hidden = 100
+        self.hidden = 10
         # self.activation = torch.nn.ReLU()
         self.activation = torch.nn.Tanh()
         self.linear_layer1 = torch.nn.Linear(2, self.hidden)
         self.linear_layer2 = torch.nn.Linear(self.hidden, self.hidden)
-        self.linear_layer3 = torch.nn.Linear(self.hidden, self.hidden)
-        self.linear_layer4 = torch.nn.Linear(self.hidden, 1)
+        self.linear_layer3 = torch.nn.Linear(self.hidden, 1)
 
     def forward(self, x):
         x = self.linear_layer1(x)
@@ -70,8 +69,6 @@ class NeuralModel(torch.nn.Module):
         x = self.linear_layer2(x)
         x = self.activation(x)
         x = self.linear_layer3(x)
-        x = self.activation(x)
-        x = self.linear_layer4(x)
         return x
 
 
@@ -83,7 +80,7 @@ def forward_step(x, p, t_ind, neural_model, offset=0):
     with torch.no_grad():
         state = x[t_ind].unsqueeze(0)
         sig = torch.tensor(input_fun((t_ind + offset) * dt)).to(torch.float32).unsqueeze(0)
-        input_batch = torch.concat((state, sig)).unsqueeze(0)
+        input_batch = torch.cat((state, sig)).unsqueeze(0)
 
         p[t_ind] = neural_model(input_batch)   # costate prediction
 
@@ -200,7 +197,8 @@ if __name__ == "__main__":
 
     model = NeuralModel()
     criterion = nn.MSELoss(reduction='sum')
-    optimizer = optim.SGD(model.parameters(), lr=0.001)
+    # optimizer = optim.SGD(model.parameters(), lr=0.01)
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
 
     weights_norm_array = torch.zeros(len(t_array)-1)
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -210,11 +208,12 @@ if __name__ == "__main__":
 
     for t_index in range(int(3*n//4)-1):
         # Average Weights' L2 norm
+        temp=0
         for par in model.parameters():
             if par.requires_grad:
-                weights_norm_array[t_index] += torch.sum(par ** 2)
-            weights_norm_array[t_index] = torch.sqrt(weights_norm_array[t_index])
-            weights_norm_array[t_index] /= total_params
+                temp += torch.sum(par ** 2)
+            temp = torch.sqrt(temp)
+            weights_norm_array[t_index] = temp / total_params
 
         train = True
         counter = 0
@@ -222,15 +221,16 @@ if __name__ == "__main__":
         dataset_train, dataset_test = generate_dataset(xf[t_index], 0, t_index, window_dataset, window_mpc)
         while train:
             displacement = 0
-            state_test = dataset_train[0][-1,0] * torch.ones(dataset_test[0].shape[0])   #TODO qui -1 no?
+            state_test = dataset_train[0][-1,0] * torch.ones(dataset_test[0].shape[0])
             costate_test = dataset_train[1][-1] * torch.ones(dataset_test[1].shape[0])
             for k in range(dataset_test[0].shape[0]-1):
                 forward_step(state_test, costate_test, k, model, offset=(t_index + dataset_train[0].shape[0]))        # TODO  + t_index + # dati training
-                displacement += (state_test[k+1]-dataset_test[0][k+1,0])**2 + (costate_test[k] - dataset_test[1][k])**2     # TODO sul costato ci va messo il k che il k+1 ancora non è stato calcolato , sbagliati i vari indici
-
+                displacement += (state_test[k+1]-dataset_test[0][k+1,0])**2 + (costate_test[k] - dataset_test[1][k])**2
             displacement /= len(state_test)
 
-            if displacement < threshold:
+            if displacement < threshold and counter > 0:
+                train = False
+            elif counter > 100:
                 train = False
             else:
                 counter += 1
@@ -249,17 +249,18 @@ if __name__ == "__main__":
 
     for t_index in range(int(3*n//4) - 1, n-1):
 
-        # Average Weights' L2 norm
+        temp=0
         for par in model.parameters():
             if par.requires_grad:
-                weights_norm_array[t_index] += torch.sum(par ** 2)
-        weights_norm_array[t_index] = torch.sqrt(weights_norm_array[t_index])
-        weights_norm_array[t_index] /= total_params
+                temp += torch.sum(par ** 2)
+            temp = torch.sqrt(temp)
+            weights_norm_array[t_index] = temp / total_params
 
         forward_step(xf, pf, t_index, model)
 
         wandb.log({"State": xf[t_index], "Costate": pf[t_index], "Signal": input_fun(t_index * dt),
                    "Weights norm": weights_norm_array[t_index]}, step=t_index)
+        print(t_index, " out of ", n)
 
     #------------------------------------------------------------------------------------------------------------------
 
@@ -267,9 +268,9 @@ if __name__ == "__main__":
 
 
     plt.figure(0)
-    plt.plot(t_array,xf, label="State",color="green")
-    plt.plot(t_array, pf, label="Costate", color="red")
-    plt.plot(t_array,input_fun(t_array), label="Signal", color="cyan")
+    plt.plot(t_array[:-1],xf[:-1], label="State",color="green")
+    plt.plot(t_array[:-1], pf[:-1], label="Costate", color="red")
+    plt.plot(t_array[:-1],input_fun(t_array)[:-1], label="Signal", color="cyan")
     plt.ylim((-10,10))
     plt.axhline(y=0, color='black', linestyle='--')
     plt.legend()

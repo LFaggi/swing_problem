@@ -9,7 +9,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='MPC neural approach for the LQTP')
 
-parser.add_argument('--T', type=float, default=100.)
+parser.add_argument('--T', type=float, default=1000.)
 parser.add_argument('--dt', type=float, default=0.01)
 parser.add_argument('--window_mpc', type=float, default=1)
 parser.add_argument('--window_training', type=float, default=0.5)
